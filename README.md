@@ -1,6 +1,6 @@
 # Hệ gợi ý nhạc dựa trên thông tin cá nhân
 
-Project xây dựng hệ gợi ý nhạc cá nhân hóa từ FMA metadata, hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Phiên bản hiện tại dùng implicit feedback: hệ thống học từ trạng thái `đã nghe/chưa nghe`, không còn dự đoán rating 1–5.
+Project xây dựng hệ gợi ý nhạc cá nhân hóa từ FMA metadata, hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Hệ thống dùng implicit feedback: học từ trạng thái `đã nghe/chưa nghe` và dự đoán xác suất người dùng có khả năng nghe một bài hát.
 
 ## 1. Dữ liệu
 
@@ -18,9 +18,9 @@ fma_metadata/
 
 FMA cung cấp metadata và audio features của bài hát, nhưng không có đầy đủ hồ sơ user và lịch sử nghe cá nhân. Vì vậy project sinh thêm dữ liệu user và interaction mô phỏng trong SQLite.
 
-## 2. Hướng mô hình hiện tại
+## 2. Hướng mô hình
 
-Bài toán được chuyển thành phân loại nhị phân:
+Bài toán được mô hình hóa dưới dạng phân loại nhị phân:
 
 ```text
 user + song -> listened
@@ -125,8 +125,6 @@ listened=1: 100000
 
 - `interactions`: chỉ chứa bài user đã nghe.
 - `training_pairs`: gồm 100k positive + 100k negative để train classifier.
-- Không còn rating 1–5.
-- Không còn cột `liked`.
 
 ## 7. Train/test split
 
@@ -148,20 +146,21 @@ Dữ liệu train gần nhất:
 
 ```text
 rows: 200000
-train_size: 159968
-test_size: 40032
+train_size: 160016
+test_size: 39984
 ```
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Precision@10 | Recall@10 | NDCG@10 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| LightGBMClassifier | 0.7283 | 0.7459 | 0.6925 | 0.7182 | 0.8028 | 0.6597 | 0.7985 | 0.8440 |
-| RandomForestClassifier | 0.6483 | 0.6851 | 0.5489 | 0.6095 | 0.7277 | 0.6079 | 0.7506 | 0.7644 |
+| LightGBMClassifier | 0.9443 | 0.9247 | 0.9673 | 0.9455 | 0.9792 | 0.7679 | 0.9021 | 0.9753 |
+| RandomForestClassifier | 0.8649 | 0.8317 | 0.9149 | 0.8713 | 0.9557 | 0.7528 | 0.8886 | 0.9520 |
 
 Nhận xét:
 
 - LightGBMClassifier đang tốt hơn RandomForestClassifier trên cả F1, ROC-AUC và NDCG@10.
 - `match_score` là xác suất model dự đoán user có khả năng nghe bài đó.
-- Các metrics RMSE/MAE đã bỏ vì không còn bài toán hồi quy rating.
+- Kết quả được đánh giá trên dữ liệu mô phỏng, trong đó hành vi nghe được sinh từ hồ sơ user, sở thích âm thanh, thể loại và ngôn ngữ.
+- Hệ thống sử dụng các metrics phân loại và xếp hạng vì đầu ra là xác suất `listened = 1`.
 
 ## 9. Chạy pipeline
 

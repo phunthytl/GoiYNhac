@@ -177,27 +177,6 @@ def add_model_features(df: pd.DataFrame) -> pd.DataFrame:
     else:
         out["duration_norm"] = 0.5
 
-    # Popularity giữ lại để khớp với preferred_popularity của user.
-    popularity_source_cols = ["listens", "favorites", "interest"]
-    for col in popularity_source_cols:
-        if col not in out.columns:
-            out[col] = 0
-        out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0)
-
-    scaler = MinMaxScaler()
-    norm_values = scaler.fit_transform(out[popularity_source_cols])
-    norm_df = pd.DataFrame(
-        norm_values,
-        columns=[f"{col}_norm" for col in popularity_source_cols],
-        index=out.index,
-    )
-
-    out["popularity"] = (
-        0.70 * norm_df["listens_norm"]
-        + 0.20 * norm_df["favorites_norm"]
-        + 0.10 * norm_df["interest_norm"]
-    ).clip(0, 1)
-
     return out
 
 
@@ -274,7 +253,6 @@ def preprocess(song_limit: int = DEFAULT_SONG_LIMIT) -> pd.DataFrame:
         "tempo",
         "tempo_norm",
         "valence",
-        "popularity",
     ]
 
     songs = songs[[col for col in keep_cols if col in songs.columns]]

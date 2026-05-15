@@ -39,8 +39,13 @@ button:hover, .btn:hover { border-color: var(--brand); color: var(--brand); }
 .cover, .big-cover { background: #eef2ff; display: flex; align-items: center; justify-content: center; color: var(--brand); }
 .cover { height: 120px; font-size: 42px; }
 .big-cover { width: 220px; height: 220px; border-radius: 10px; font-size: 80px; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1); }
+.song-card-link { display: block; color: inherit; }
 .song-info { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .song-info span, .song-info small { color: var(--muted); }
+.song-card-actions, .rec-actions, .detail-actions { padding: 0 14px 14px; display: flex; align-items: center; gap: 10px; }
+.rec-actions { padding: 14px 0 0; }
+.detail-actions { padding: 14px 0 0; }
+.listen-badge { display: inline-flex; align-items: center; padding: 9px 12px; border-radius: 8px; background: #ecfdf5; color: #047857; border: 1px solid #bbf7d0; font-weight: 700; }
 .pagination { display: flex; justify-content: center; gap: 12px; margin-top: 26px; align-items: center; }
 .pagination a { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--brand); background: var(--panel); }
 .rec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }

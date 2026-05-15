@@ -30,12 +30,14 @@ except ImportError as exc:
 
 
 NUMERIC_FEATURES = [
+    "preference_similarity",
+    "genre_match_score",
+    "language_match_score",
     "age",
     "preferred_energy",
     "preferred_valence",
     "preferred_danceability",
     "preferred_tempo",
-    "preferred_popularity",
     "preferred_acousticness",
     "preferred_instrumentalness",
     "preferred_liveness",
@@ -45,7 +47,6 @@ NUMERIC_FEATURES = [
     "valence",
     "danceability",
     "tempo_norm",
-    "popularity",
     "acousticness",
     "instrumentalness",
     "liveness",
@@ -69,7 +70,6 @@ REQUIRED_FEATURES = [
     "preferred_valence",
     "preferred_danceability",
     "preferred_tempo",
-    "preferred_popularity",
     "preferred_acousticness",
     "preferred_instrumentalness",
     "preferred_liveness",
@@ -78,7 +78,6 @@ REQUIRED_FEATURES = [
     "valence",
     "danceability",
     "tempo_norm",
-    "popularity",
 ]
 
 

@@ -11,7 +11,18 @@
       <span>Genre chính: {{ song.genre_top }}</span>
       <span>Ngôn ngữ: {{ song.language_code|language_name }}</span>
       <span>Duration: {{ song.duration|int }}s</span>
-      <span>Popularity: {{ '%.3f'|format(song.popularity) }}</span>
+      <span>Tempo: {{ '%.1f'|format(song.tempo|default(0)) }}</span>
+      <span>Tempo chuẩn hóa: {{ '%.3f'|format(song.tempo_norm) }}</span>
+    </div>
+    <div class="detail-actions">
+      {% if has_listened %}
+        <span class="listen-badge">Đã nghe</span>
+      {% else %}
+        <form method="post" action="{{ url_for('listen_song', song_id=song.id) }}">
+          <input type="hidden" name="next" value="{{ url_for('song_detail', song_id=song.id) }}">
+          <button class="primary" type="submit">Nghe nhạc</button>
+        </form>
+      {% endif %}
     </div>
     <div class="genre-detail-box">
       <strong>Genre trực tiếp:</strong>
@@ -28,8 +39,12 @@
     <div><strong>{{ '%.3f'|format(song.energy) }}</strong><span>Energy</span></div>
     <div><strong>{{ '%.3f'|format(song.valence) }}</strong><span>Valence</span></div>
     <div><strong>{{ '%.3f'|format(song.danceability) }}</strong><span>Danceability</span></div>
+    <div><strong>{{ '%.1f'|format(song.tempo|default(0)) }}</strong><span>Tempo gốc</span></div>
     <div><strong>{{ '%.3f'|format(song.tempo_norm) }}</strong><span>Tempo chuẩn hóa</span></div>
-    <div><strong>{{ '%.3f'|format(song.popularity) }}</strong><span>Popularity</span></div>
+    <div><strong>{{ '%.3f'|format(song.acousticness|default(0.5)) }}</strong><span>Acousticness</span></div>
+    <div><strong>{{ '%.3f'|format(song.instrumentalness|default(0.5)) }}</strong><span>Không lời</span></div>
+    <div><strong>{{ '%.3f'|format(song.liveness|default(0.5)) }}</strong><span>Live</span></div>
+    <div><strong>{{ '%.3f'|format(song.speechiness|default(0.5)) }}</strong><span>Lời/nói</span></div>
   </div>
 </div>
 

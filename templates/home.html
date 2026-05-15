@@ -24,14 +24,26 @@
 
 <div class="song-grid">
   {% for s in songs %}
-    <a class="song-card" href="{{ url_for('song_detail', song_id=s.id) }}">
-      <div class="cover">♪</div>
-      <div class="song-info">
-        <strong>{{ s.title }}</strong>
-        <span>{{ s.artist_name }}</span>
-        <small>{{ s.genre_top }} · popularity {{ '%.3f'|format(s.popularity) }}</small>
+    <div class="song-card">
+      <a class="song-card-link" href="{{ url_for('song_detail', song_id=s.id) }}">
+        <div class="cover">♪</div>
+        <div class="song-info">
+          <strong>{{ s.title }}</strong>
+          <span>{{ s.artist_name }}</span>
+          <small>{{ s.genre_top }}</small>
+        </div>
+      </a>
+      <div class="song-card-actions">
+        {% if s.id|int in listened_song_ids %}
+          <span class="listen-badge">Đã nghe</span>
+        {% else %}
+          <form method="post" action="{{ url_for('listen_song', song_id=s.id) }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button class="small-btn primary" type="submit">Nghe nhạc</button>
+          </form>
+        {% endif %}
       </div>
-    </a>
+    </div>
   {% endfor %}
 </div>
 

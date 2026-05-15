@@ -17,6 +17,8 @@ from database import (
     init_db,
     load_interactions_df,
     load_songs_df,
+    mark_song_listened,
+    update_profile_from_listened_song,
     load_users_df,
     update_profile,
     verify_account,
@@ -186,7 +188,10 @@ def get_recommendations_for_user(
     interactions = load_interactions()
     model = load_model(model_name)
 
-    user = users[users["user_id"] == user_id].iloc[0]
+    user_rows = users[users["user_id"] == int(user_id)]
+    if user_rows.empty:
+        return pd.DataFrame()
+    user = user_rows.iloc[0]
     seen_song_ids = set(interactions.loc[interactions["user_id"] == user_id, "song_id"].astype(int))
     candidates = songs[~songs["id"].astype(int).isin(seen_song_ids)].copy()
     if genre:
@@ -207,8 +212,12 @@ def get_recommendations_for_user(
         "energy",
         "valence",
         "danceability",
+        "tempo",
         "tempo_norm",
-        "popularity",
+        "acousticness",
+        "instrumentalness",
+        "liveness",
+        "speechiness",
         "match_score",
     ]
     return feature_df.sort_values("match_score", ascending=False).head(top_k)[cols]
@@ -307,7 +316,6 @@ def setup():
                 "preferred_valence": float(request.form.get("preferred_valence", 0.5)),
                 "preferred_danceability": float(request.form.get("preferred_danceability", 0.5)),
                 "preferred_tempo": float(request.form.get("preferred_tempo", 0.5)),
-                "preferred_popularity": float(request.form.get("preferred_popularity", 0.5)),
                 "preferred_acousticness": float(request.form.get("preferred_acousticness", 0.5)),
                 "preferred_instrumentalness": float(request.form.get("preferred_instrumentalness", 0.5)),
                 "preferred_liveness": float(request.form.get("preferred_liveness", 0.5)),
@@ -356,18 +364,21 @@ def home():
     if genre:
         filtered = filtered[song_matches_genre_filter(filtered, genre)]
 
-    sort_cols = [col for col in ["popularity", "title"] if col in filtered.columns]
-    ascending = [False if col == "popularity" else True for col in sort_cols]
+    sort_cols = [col for col in ["title"] if col in filtered.columns]
+    ascending = [True for col in sort_cols]
     if sort_cols:
         filtered = filtered.sort_values(sort_cols, ascending=ascending)
     page_items, total, total_pages, page = paginate_df(filtered, page, per_page)
     genres = available_genres(songs)
     user = current_user()
+    interactions = load_interactions()
+    listened_song_ids = set(interactions.loc[interactions["user_id"] == int(session["user_id"]), "song_id"].astype(int))
 
     return render_template(
         "home.html",
         user=user,
         songs=page_items.to_dict("records"),
+        listened_song_ids=listened_song_ids,
         genres=genres,
         q=q,
         genre=genre,
@@ -384,6 +395,8 @@ def recommendations():
     if top_k not in {10, 15, 20}:
         top_k = 10
     user = current_user()
+    interactions = load_interactions()
+    listened_song_ids = set(interactions.loc[interactions["user_id"] == int(session["user_id"]), "song_id"].astype(int))
     lightgbm_recs = get_recommendations_for_user(
         int(session["user_id"]),
         top_k=top_k,
@@ -399,8 +412,26 @@ def recommendations():
         user=user,
         lightgbm_recs=lightgbm_recs.to_dict("records"),
         random_forest_recs=random_forest_recs.to_dict("records"),
+        listened_song_ids=listened_song_ids,
         top_k=top_k,
     )
+
+
+@app.route("/song/<int:song_id>/listen", methods=["POST"])
+@login_required
+def listen_song(song_id: int):
+    songs = load_songs()
+    exists = not songs[songs["id"].astype(int) == song_id].empty
+    if not exists:
+        flash("Không tìm thấy bài hát.")
+        return redirect(url_for("home"))
+
+    user_id = int(session["user_id"])
+    mark_song_listened(user_id, song_id)
+    update_profile_from_listened_song(user_id, song_id)
+    flash("Đã ghi nhận bài hát này là đã nghe và cập nhật hồ sơ gu nhạc.")
+    next_url = request.form.get("next") or url_for("song_detail", song_id=song_id)
+    return redirect(next_url)
 
 
 @app.route("/song/<int:song_id>")
@@ -415,7 +446,14 @@ def song_detail(song_id: int):
     song = rows.iloc[0]
     user_id = int(session["user_id"])
     user_interactions = interactions[(interactions["user_id"] == user_id) & (interactions["song_id"] == song_id)]
-    return render_template("song_detail.html", song=song, user=current_user(), interactions=user_interactions.to_dict("records"))
+    has_listened = not user_interactions.empty
+    return render_template(
+        "song_detail.html",
+        song=song,
+        user=current_user(),
+        interactions=user_interactions.to_dict("records"),
+        has_listened=has_listened,
+    )
 
 
 @app.route("/profile")

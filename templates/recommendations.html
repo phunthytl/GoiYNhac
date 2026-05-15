@@ -19,7 +19,10 @@
     <div><span>Valence</span><b>{{ '%.2f'|format(user.preferred_valence) }}</b></div>
     <div><span>Danceability</span><b>{{ '%.2f'|format(user.preferred_danceability) }}</b></div>
     <div><span>Tempo</span><b>{{ '%.2f'|format(user.preferred_tempo) }}</b></div>
-    <div><span>Popularity</span><b>{{ '%.2f'|format(user.preferred_popularity) }}</b></div>
+    <div><span>Acoustic</span><b>{{ '%.2f'|format(user.preferred_acousticness|default(0.5)) }}</b></div>
+    <div><span>Instrumental</span><b>{{ '%.2f'|format(user.preferred_instrumentalness|default(0.5)) }}</b></div>
+    <div><span>Live</span><b>{{ '%.2f'|format(user.preferred_liveness|default(0.5)) }}</b></div>
+    <div><span>Speech</span><b>{{ '%.2f'|format(user.preferred_speechiness|default(0.5)) }}</b></div>
   </div>
 </div>
 
@@ -45,7 +48,21 @@
         <div class="score">{{ '%.2f'|format(s.match_score) }}</div>
         <h3>{{ s.title }}</h3>
         <p>{{ s.artist_name }}</p>
-        <small>{{ s.genre_top }} · energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }}</small>
+        <small>
+          {{ s.genre_top }} · {{ s.language_code|language_name }} · {{ s.duration|int }}s<br>
+          energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }} · dance {{ '%.2f'|format(s.danceability) }} · tempo {{ '%.2f'|format(s.tempo_norm) }}<br>
+          acoustic {{ '%.2f'|format(s.acousticness|default(0.5)) }} · instrumental {{ '%.2f'|format(s.instrumentalness|default(0.5)) }} · live {{ '%.2f'|format(s.liveness|default(0.5)) }} · speech {{ '%.2f'|format(s.speechiness|default(0.5)) }}
+        </small>
+        <div class="rec-actions">
+          {% if s.id|int in listened_song_ids %}
+            <span class="listen-badge">Đã nghe</span>
+          {% else %}
+            <form method="post" action="{{ url_for('listen_song', song_id=s.id) }}">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="small-btn primary" type="submit">Nghe nhạc</button>
+            </form>
+          {% endif %}
+        </div>
       </a>
     {% endfor %}
   </div>
@@ -64,7 +81,21 @@
         <div class="score rf-score">{{ '%.2f'|format(s.match_score) }}</div>
         <h3>{{ s.title }}</h3>
         <p>{{ s.artist_name }}</p>
-        <small>{{ s.genre_top }} · energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }}</small>
+        <small>
+          {{ s.genre_top }} · {{ s.language_code|language_name }} · {{ s.duration|int }}s<br>
+          energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }} · dance {{ '%.2f'|format(s.danceability) }} · tempo {{ '%.2f'|format(s.tempo_norm) }}<br>
+          acoustic {{ '%.2f'|format(s.acousticness|default(0.5)) }} · instrumental {{ '%.2f'|format(s.instrumentalness|default(0.5)) }} · live {{ '%.2f'|format(s.liveness|default(0.5)) }} · speech {{ '%.2f'|format(s.speechiness|default(0.5)) }}
+        </small>
+        <div class="rec-actions">
+          {% if s.id|int in listened_song_ids %}
+            <span class="listen-badge">Đã nghe</span>
+          {% else %}
+            <form method="post" action="{{ url_for('listen_song', song_id=s.id) }}">
+              <input type="hidden" name="next" value="{{ request.full_path }}">
+              <button class="small-btn primary" type="submit">Nghe nhạc</button>
+            </form>
+          {% endif %}
+        </div>
       </a>
     {% endfor %}
   </div>

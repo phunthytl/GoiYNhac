@@ -20,7 +20,6 @@ PROFILE_COLUMNS = [
     "preferred_valence",
     "preferred_danceability",
     "preferred_tempo",
-    "preferred_popularity",
     "preferred_acousticness",
     "preferred_instrumentalness",
     "preferred_liveness",
@@ -38,12 +37,22 @@ DEFAULT_PROFILE = {
     "preferred_valence": 0.5,
     "preferred_danceability": 0.5,
     "preferred_tempo": 0.5,
-    "preferred_popularity": 0.5,
     "preferred_acousticness": 0.5,
     "preferred_instrumentalness": 0.5,
     "preferred_liveness": 0.5,
     "preferred_speechiness": 0.5,
     "favorite_detailed_genres": "",
+}
+
+AUDIO_PROFILE_FIELDS = {
+    "energy": "preferred_energy",
+    "valence": "preferred_valence",
+    "danceability": "preferred_danceability",
+    "tempo_norm": "preferred_tempo",
+    "acousticness": "preferred_acousticness",
+    "instrumentalness": "preferred_instrumentalness",
+    "liveness": "preferred_liveness",
+    "speechiness": "preferred_speechiness",
 }
 
 
@@ -102,6 +111,8 @@ def migrate_implicit_feedback_tables(conn: sqlite3.Connection) -> None:
             """
         )
         conn.execute("PRAGMA foreign_keys = ON")
+    elif interaction_cols and "created_at" not in interaction_cols:
+        conn.execute("ALTER TABLE interactions ADD COLUMN created_at TEXT")
 
     pair_cols = {row["name"] for row in conn.execute("PRAGMA table_info(training_pairs)")}
     if "rating" in pair_cols or (pair_cols and "listened" not in pair_cols):
@@ -154,7 +165,6 @@ def repair_auth_tables(conn: sqlite3.Connection) -> None:
                 preferred_valence REAL NOT NULL,
                 preferred_danceability REAL NOT NULL,
                 preferred_tempo REAL NOT NULL,
-                preferred_popularity REAL NOT NULL,
                 preferred_acousticness REAL DEFAULT 0.5,
                 preferred_instrumentalness REAL DEFAULT 0.5,
                 preferred_liveness REAL DEFAULT 0.5,
@@ -165,7 +175,7 @@ def repair_auth_tables(conn: sqlite3.Connection) -> None:
             INSERT OR IGNORE INTO user_profiles_fixed (
                 user_id, account_id, age, age_group, gender, favorite_genres, language_preference,
                 preferred_energy, preferred_valence, preferred_danceability, preferred_tempo,
-                preferred_popularity, preferred_acousticness, preferred_instrumentalness,
+                preferred_acousticness, preferred_instrumentalness,
                 preferred_liveness, preferred_speechiness, favorite_detailed_genres
             )
             SELECT
@@ -180,7 +190,6 @@ def repair_auth_tables(conn: sqlite3.Connection) -> None:
                 COALESCE(preferred_valence, 0.5),
                 COALESCE(preferred_danceability, 0.5),
                 COALESCE(preferred_tempo, 0.5),
-                COALESCE(preferred_popularity, 0.5),
                 COALESCE(preferred_acousticness, 0.5),
                 COALESCE(preferred_instrumentalness, 0.5),
                 COALESCE(preferred_liveness, 0.5),
@@ -229,7 +238,6 @@ def init_db() -> None:
                 preferred_valence REAL NOT NULL,
                 preferred_danceability REAL NOT NULL,
                 preferred_tempo REAL NOT NULL,
-                preferred_popularity REAL NOT NULL,
                 preferred_acousticness REAL DEFAULT 0.5,
                 preferred_instrumentalness REAL DEFAULT 0.5,
                 preferred_liveness REAL DEFAULT 0.5,
@@ -257,8 +265,7 @@ def init_db() -> None:
                 speechiness REAL,
                 tempo REAL,
                 tempo_norm REAL,
-                valence REAL,
-                popularity REAL
+                valence REAL
             );
 
             CREATE TABLE IF NOT EXISTS interactions (
@@ -395,6 +402,51 @@ def load_training_pairs_df() -> pd.DataFrame:
     return read_table("training_pairs")
 
 
+def mark_song_listened(user_id: int, song_id: int) -> None:
+    init_db()
+    with get_connection() as conn:
+        # Không dùng ON CONFLICT vì DB cũ có thể bị pandas to_sql làm mất PRIMARY KEY.
+        conn.execute(
+            "DELETE FROM interactions WHERE user_id = ? AND song_id = ?",
+            (int(user_id), int(song_id)),
+        )
+        conn.execute(
+            """
+            INSERT INTO interactions (user_id, song_id, listened, created_at)
+            VALUES (?, ?, 1, ?)
+            """,
+            (int(user_id), int(song_id), utc_now()),
+        )
+
+
+def clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def update_profile_from_listened_song(user_id: int, song_id: int, learning_rate: float = 0.2) -> None:
+    init_db()
+    lr = clamp01(learning_rate)
+    with get_connection() as conn:
+        user = conn.execute("SELECT * FROM user_profiles WHERE user_id = ?", (int(user_id),)).fetchone()
+        song = conn.execute("SELECT * FROM songs WHERE id = ?", (int(song_id),)).fetchone()
+        if user is None or song is None:
+            return
+
+        updates = {}
+        for song_field, profile_field in AUDIO_PROFILE_FIELDS.items():
+            old_value = user[profile_field] if profile_field in user.keys() else 0.5
+            song_value = song[song_field] if song_field in song.keys() else 0.5
+            if old_value is None or pd.isna(old_value):
+                old_value = 0.5
+            if song_value is None or pd.isna(song_value):
+                song_value = 0.5
+            updates[profile_field] = clamp01(float(old_value) * (1 - lr) + float(song_value) * lr)
+
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        values = list(updates.values()) + [int(user_id)]
+        conn.execute(f"UPDATE user_profiles SET {assignments} WHERE user_id = ?", values)
+
+
 def row_to_series(row: sqlite3.Row | None) -> pd.Series | None:
     if row is None:
         return None
@@ -474,7 +526,6 @@ def create_profile_for_account(account_id: int) -> int:
                 values["preferred_valence"],
                 values["preferred_danceability"],
                 values["preferred_tempo"],
-                values["preferred_popularity"],
                 values["preferred_acousticness"],
                 values["preferred_instrumentalness"],
                 values["preferred_liveness"],

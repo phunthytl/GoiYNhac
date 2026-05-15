@@ -134,17 +134,6 @@
       </label>
 
       <label class="audio-slider-card">
-        <span>Mức độ ưu tiên bài hát phổ biến</span>
-        <p>Giá trị thấp giúp khám phá bài ít nổi; giá trị cao ưu tiên bài có lượt nghe/yêu thích cao hơn.</p>
-        <div class="range-row">
-          <small>0</small>
-          <input type="range" name="preferred_popularity" min="0" max="1" step="0.01" value="{{ user.preferred_popularity }}">
-          <small>1</small>
-          <b class="range-value">{{ '%.2f'|format(user.preferred_popularity|float) }}</b>
-        </div>
-      </label>
-
-      <label class="audio-slider-card">
         <span>Mức độ thích nhạc mộc / acoustic</span>
         <p>Giá trị thấp nghiêng về âm thanh điện tử/producer; giá trị cao ưu tiên chất âm mộc, tự nhiên.</p>
         <div class="range-row"><small>0</small><input type="range" name="preferred_acousticness" min="0" max="1" step="0.01" value="{{ user.preferred_acousticness|default(0.5) }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_acousticness|default(0.5)|float) }}</b></div>

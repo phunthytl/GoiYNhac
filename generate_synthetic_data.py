@@ -19,7 +19,9 @@ from database import (
 
 
 GENDERS = ["Male", "Female", "Other"]
-LANG_PREFS = ["en", "es", "fr", "de", "unknown"]
+UNKNOWN_LANGUAGE_PROB = 0.08
+GENRE_EXPLORATION_PROB = 0.30
+LANGUAGE_EXPLORATION_PROB = 0.35
 DEMO_PASSWORD = "User@123456"
 
 
@@ -58,7 +60,6 @@ def validate_songs_columns(songs: pd.DataFrame) -> None:
         "valence",
         "danceability",
         "tempo_norm",
-        "popularity",
     ]
     missing_cols = [col for col in required_cols if col not in songs.columns]
     if missing_cols:
@@ -77,6 +78,14 @@ def make_users(songs: pd.DataFrame, n_users: int, rng: np.random.Generator) -> p
     genre_counts = songs["genre_top"].value_counts(normalize=True)
     genre_probs = genre_counts.reindex(genres).fillna(0).to_numpy()
     genre_probs = genre_probs / genre_probs.sum()
+
+    language_counts = songs["language_code"].fillna("unknown").astype(str).value_counts()
+    language_counts = language_counts[language_counts.index != "unknown"]
+    language_codes = language_counts.index.tolist()
+    language_probs = language_counts.to_numpy(dtype=float)
+    if language_codes:
+        language_probs = language_probs / language_probs.sum()
+
     rows = []
 
     for user_id in range(1, n_users + 1):
@@ -104,6 +113,11 @@ def make_users(songs: pd.DataFrame, n_users: int, rng: np.random.Generator) -> p
                         rng.choice(detailed, size=selected_count, replace=False).tolist()
                     )
 
+        if language_codes and rng.random() > UNKNOWN_LANGUAGE_PROB:
+            language_preference = str(rng.choice(language_codes, p=language_probs))
+        else:
+            language_preference = "unknown"
+
         rows.append(
             {
                 "user_id": user_id,
@@ -111,12 +125,11 @@ def make_users(songs: pd.DataFrame, n_users: int, rng: np.random.Generator) -> p
                 "age_group": age_group(age),
                 "gender": gender,
                 "favorite_genres": "|".join(fav_genres),
-                "language_preference": str(rng.choice(LANG_PREFS, p=[0.55, 0.08, 0.08, 0.04, 0.25])),
+                "language_preference": language_preference,
                 "preferred_energy": float(rng.beta(2.2, 2.2)),
                 "preferred_valence": float(rng.beta(2.0, 2.0)),
                 "preferred_danceability": float(rng.beta(2.0, 2.3)),
                 "preferred_tempo": float(rng.beta(2.2, 2.1)),
-                "preferred_popularity": float(rng.beta(1.8, 2.8)),
                 "preferred_acousticness": float(rng.beta(2.0, 2.2)),
                 "preferred_instrumentalness": float(rng.beta(1.5, 3.0)),
                 "preferred_liveness": float(rng.beta(1.6, 3.2)),
@@ -159,7 +172,6 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
             float(user["preferred_valence"]),
             float(user["preferred_danceability"]),
             float(user["preferred_tempo"]),
-            float(user["preferred_popularity"]),
             float(user.get("preferred_acousticness", 0.5)),
             float(user.get("preferred_instrumentalness", 0.5)),
             float(user.get("preferred_liveness", 0.5)),
@@ -173,7 +185,6 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
             float(song["valence"]),
             float(song["danceability"]),
             float(song["tempo_norm"]),
-            float(song["popularity"]),
             float(song.get("acousticness", 0.5)),
             float(song.get("instrumentalness", 0.5)),
             float(song.get("liveness", 0.5)),
@@ -186,10 +197,10 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
 
 def listen_affinity_score(user: pd.Series, song: pd.Series, rng: np.random.Generator) -> float:
     score = (
-        0.65 * preference_similarity_score(user, song)
-        + 0.25 * genre_match_score(user, song)
-        + 0.10 * language_match_score(user, song)
-        + rng.normal(0, 0.08)
+        0.50 * preference_similarity_score(user, song)
+        + 0.30 * genre_match_score(user, song)
+        + 0.20 * language_match_score(user, song)
+        + rng.normal(0, 0.06)
     )
     return float(score)
 
@@ -253,7 +264,6 @@ def build_training_pair(user: pd.Series, song: pd.Series, listened: int) -> dict
         "preferred_valence": float(user["preferred_valence"]),
         "preferred_danceability": float(user["preferred_danceability"]),
         "preferred_tempo": float(user["preferred_tempo"]),
-        "preferred_popularity": float(user["preferred_popularity"]),
         "preferred_acousticness": float(user.get("preferred_acousticness", 0.5)),
         "preferred_instrumentalness": float(user.get("preferred_instrumentalness", 0.5)),
         "preferred_liveness": float(user.get("preferred_liveness", 0.5)),
@@ -268,7 +278,6 @@ def build_training_pair(user: pd.Series, song: pd.Series, listened: int) -> dict
         "valence": float(song["valence"]),
         "danceability": float(song["danceability"]),
         "tempo_norm": float(song["tempo_norm"]),
-        "popularity": float(song["popularity"]),
         "acousticness": float(song.get("acousticness", 0.5)),
         "instrumentalness": float(song.get("instrumentalness", 0.5)),
         "liveness": float(song.get("liveness", 0.5)),
@@ -277,6 +286,22 @@ def build_training_pair(user: pd.Series, song: pd.Series, listened: int) -> dict
         "genre_match_score": genre_match_score(user, song),
         "language_match_score": language_match_score(user, song),
     }
+
+
+def score_and_sample_positive_pool(
+    user: pd.Series,
+    candidates: pd.DataFrame,
+    target_n: int,
+    rng: np.random.Generator,
+) -> pd.DataFrame:
+    if candidates.empty:
+        return candidates
+    scored = candidates.copy()
+    scored["_affinity"] = scored.apply(lambda song: listen_affinity_score(user, song, rng), axis=1)
+    pool_size = min(len(scored), max(target_n * 3, target_n))
+    pool = scored.nlargest(pool_size, "_affinity")
+    sample_n = min(target_n, len(pool))
+    return pool.sample(sample_n, replace=False, random_state=int(rng.integers(0, 1_000_000))).drop(columns=["_affinity"])
 
 
 def sample_positive_songs(
@@ -293,16 +318,52 @@ def sample_positive_songs(
             group = by_genre.get(genre)
             if group is not None and not group.empty:
                 candidate_parts.append(group)
-    candidate_parts.append(songs.sample(min(len(songs), target_n * 4), random_state=int(rng.integers(0, 1_000_000))))
-    candidates = pd.concat(candidate_parts, ignore_index=True).drop_duplicates(subset=["id"])
-    if len(candidates) < target_n:
-        candidates = songs.copy()
 
-    scored = candidates.copy()
-    scored["_affinity"] = scored.apply(lambda song: listen_affinity_score(user, song, rng), axis=1)
-    pool_size = min(len(scored), max(target_n * 3, target_n))
-    pool = scored.nlargest(pool_size, "_affinity")
-    return pool.sample(target_n, replace=False, random_state=int(rng.integers(0, 1_000_000))).drop(columns=["_affinity"])
+    genre_candidates = pd.concat(candidate_parts, ignore_index=True).drop_duplicates(subset=["id"]) if candidate_parts else pd.DataFrame()
+    language_preference = str(user.get("language_preference", "unknown"))
+
+    in_genre_n = int(round(target_n * (1 - GENRE_EXPLORATION_PROB)))
+    exploration_n = target_n - in_genre_n
+    selected_parts = []
+    selected_ids: set[int] = set()
+
+    if not genre_candidates.empty and in_genre_n > 0:
+        primary_candidates = genre_candidates
+        if language_preference != "unknown":
+            language_target_n = int(round(in_genre_n * (1 - LANGUAGE_EXPLORATION_PROB)))
+            language_candidates = genre_candidates[genre_candidates["language_code"].astype(str) == language_preference].copy()
+            if language_target_n > 0 and not language_candidates.empty:
+                language_primary = score_and_sample_positive_pool(user, language_candidates, language_target_n, rng)
+                selected_parts.append(language_primary)
+                selected_ids.update(language_primary["id"].astype(int).tolist())
+
+            remaining_primary_n = in_genre_n - len(selected_ids)
+            primary_pool = genre_candidates[~genre_candidates["id"].astype(int).isin(selected_ids)].copy()
+            primary = score_and_sample_positive_pool(user, primary_pool, remaining_primary_n, rng)
+            selected_parts.append(primary)
+            selected_ids.update(primary["id"].astype(int).tolist())
+            primary = pd.DataFrame()
+        else:
+            primary = score_and_sample_positive_pool(user, primary_candidates, in_genre_n, rng)
+            selected_parts.append(primary)
+            selected_ids.update(primary["id"].astype(int).tolist())
+
+    remaining_n = target_n - len(selected_ids)
+    if remaining_n > 0:
+        exploration_pool = songs[~songs["id"].astype(int).isin(selected_ids)].copy()
+        if exploration_n <= 0 and not genre_candidates.empty:
+            exploration_pool = genre_candidates[~genre_candidates["id"].astype(int).isin(selected_ids)].copy()
+        exploration = score_and_sample_positive_pool(user, exploration_pool, remaining_n, rng)
+        selected_parts.append(exploration)
+        selected_ids.update(exploration["id"].astype(int).tolist())
+
+    positives = pd.concat(selected_parts, ignore_index=True).drop_duplicates(subset=["id"]) if selected_parts else pd.DataFrame()
+    if len(positives) < target_n:
+        fill_pool = songs[~songs["id"].astype(int).isin(positives["id"].astype(int).tolist())].copy()
+        fill = score_and_sample_positive_pool(user, fill_pool, target_n - len(positives), rng)
+        positives = pd.concat([positives, fill], ignore_index=True).drop_duplicates(subset=["id"])
+
+    return positives.head(target_n)
 
 
 def generate(

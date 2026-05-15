@@ -55,7 +55,6 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
         float(user["preferred_valence"]),
         float(user["preferred_danceability"]),
         float(user["preferred_tempo"]),
-        float(user["preferred_popularity"]),
         float(user.get("preferred_acousticness", 0.5)),
         float(user.get("preferred_instrumentalness", 0.5)),
         float(user.get("preferred_liveness", 0.5)),
@@ -66,7 +65,6 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
         float(song["valence"]),
         float(song["danceability"]),
         float(song["tempo_norm"]),
-        float(song["popularity"]),
         float(song.get("acousticness", 0.5)),
         float(song.get("instrumentalness", 0.5)),
         float(song.get("liveness", 0.5)),
@@ -89,7 +87,6 @@ def build_candidate_features(user: pd.Series, songs: pd.DataFrame) -> pd.DataFra
     candidates["preferred_valence"] = float(user["preferred_valence"])
     candidates["preferred_danceability"] = float(user["preferred_danceability"])
     candidates["preferred_tempo"] = float(user["preferred_tempo"])
-    candidates["preferred_popularity"] = float(user["preferred_popularity"])
     candidates["preferred_acousticness"] = float(user.get("preferred_acousticness", 0.5))
     candidates["preferred_instrumentalness"] = float(user.get("preferred_instrumentalness", 0.5))
     candidates["preferred_liveness"] = float(user.get("preferred_liveness", 0.5))
@@ -134,7 +131,6 @@ def recommend(user_id: int, top_k: int = 10, genre: str | None = None) -> pd.Dat
         "valence",
         "danceability",
         "tempo_norm",
-        "popularity",
         "match_score",
     ]
     return feature_df.sort_values("match_score", ascending=False).head(top_k)[result_cols]

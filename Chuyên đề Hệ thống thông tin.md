@@ -6,7 +6,7 @@ Trong thời đại số, các nền tảng nghe nhạc trực tuyến cung cấ
 
 Hệ gợi ý nhạc được xây dựng nhằm hỗ trợ người dùng khám phá bài hát phù hợp hơn. Thay vì chỉ hiển thị danh sách bài hát phổ biến chung cho tất cả mọi người, hệ thống tận dụng hồ sơ người dùng và đặc trưng âm thanh của bài hát để tạo danh sách gợi ý cá nhân hóa.
 
-Đề tài “Hệ gợi ý nhạc dựa trên thông tin cá nhân” tập trung xây dựng một hệ thống gợi ý sử dụng dữ liệu metadata và audio features từ bộ dữ liệu FMA, kết hợp với hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Phiên bản hiện tại không còn dự đoán rating 1–5, mà chuyển sang hướng implicit feedback: hệ thống học từ trạng thái bài hát đã nghe/chưa nghe và dự đoán xác suất người dùng có khả năng nghe một bài hát.
+Đề tài “Hệ gợi ý nhạc dựa trên thông tin cá nhân” tập trung xây dựng một hệ thống gợi ý sử dụng dữ liệu metadata và audio features từ bộ dữ liệu FMA, kết hợp với hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Hệ thống được xây dựng theo hướng implicit feedback: học từ trạng thái bài hát đã nghe/chưa nghe và dự đoán xác suất người dùng có khả năng nghe một bài hát.
 
 ## 1.2. Mục tiêu đề tài
 
@@ -392,12 +392,22 @@ Kết quả:
 
 ## 3.5. Chiến lược sinh positive/negative samples
 
-Positive samples là các bài user được xem là đã nghe. Hệ thống ưu tiên chọn bài phù hợp với user dựa trên:
+Positive samples là các bài user được xem là đã nghe. Dữ liệu được sinh theo hướng cân bằng hơn giữa sở thích cố định và hành vi khám phá:
 
-- độ tương đồng giữa sở thích âm thanh của user và audio features của bài hát;
-- độ khớp thể loại;
-- độ khớp ngôn ngữ;
-- nhiễu ngẫu nhiên để mô phỏng hành vi thực tế.
+- phần lớn bài đã nghe vẫn bám theo thể loại yêu thích;
+- một phần bài được chọn ngoài thể loại yêu thích để mô phỏng hành vi nghe khám phá;
+- ngôn ngữ yêu thích được ưu tiên nhưng không ép tuyệt đối;
+- độ tương đồng giữa sở thích âm thanh của user và audio features vẫn giữ vai trò quan trọng;
+- nhiễu ngẫu nhiên được thêm vào để tránh dữ liệu quá sạch.
+
+Điểm phù hợp khi sinh positive samples được tính theo hướng:
+
+```text
+affinity = 0.50 * audio_similarity
+         + 0.30 * genre_match
+         + 0.20 * language_match
+         + noise
+```
 
 Negative samples là các bài user chưa nghe, được lấy từ phần còn lại của catalog. Negative samples giúp model học ranh giới giữa bài phù hợp và bài chưa phù hợp.
 
@@ -466,11 +476,12 @@ Feature gồm:
 
 | Nhóm | Feature |
 |---|---|
-| User numeric | age, preferred_energy, preferred_valence, preferred_danceability, preferred_tempo, preferred_popularity, preferred_acousticness, preferred_instrumentalness, preferred_liveness, preferred_speechiness |
-| Song numeric | duration_norm, energy, valence, danceability, tempo_norm, popularity, acousticness, instrumentalness, liveness, speechiness |
+| Similarity numeric | preference_similarity, genre_match_score, language_match_score |
+| User numeric | age, preferred_energy, preferred_valence, preferred_danceability, preferred_tempo, preferred_acousticness, preferred_instrumentalness, preferred_liveness, preferred_speechiness |
+| Song numeric | duration_norm, energy, valence, danceability, tempo_norm, acousticness, instrumentalness, liveness, speechiness |
 | Categorical | age_group, gender, language_preference, favorite_genres, favorite_detailed_genres, genre_top, genres_titles_text, genres_all_titles_text, language_code |
 
-Đặc trưng số được truyền trực tiếp. Đặc trưng phân loại được mã hóa One-Hot bằng `OneHotEncoder(handle_unknown="ignore")`.
+Đặc trưng số được truyền trực tiếp. Đặc trưng phân loại được mã hóa One-Hot bằng `OneHotEncoder(handle_unknown="ignore")`. Các feature `preference_similarity`, `genre_match_score`, `language_match_score` được dùng để giúp model nhận biết rõ hơn mức độ khớp giữa hồ sơ user và bài hát.
 
 ### 3.9.2. Train/test split
 
@@ -531,40 +542,40 @@ Như vậy dữ liệu huấn luyện cân bằng giữa positive và negative s
 
 | Metric | Giá trị |
 |---|---:|
-| Accuracy | 0.7283 |
-| Precision | 0.7459 |
-| Recall | 0.6925 |
-| F1 | 0.7182 |
-| ROC-AUC | 0.8028 |
-| Precision@10 | 0.6597 |
-| Recall@10 | 0.7985 |
-| NDCG@10 | 0.8440 |
-| Users evaluated | 1844 |
+| Accuracy | 0.9443 |
+| Precision | 0.9247 |
+| Recall | 0.9673 |
+| F1 | 0.9455 |
+| ROC-AUC | 0.9792 |
+| Precision@10 | 0.7679 |
+| Recall@10 | 0.9021 |
+| NDCG@10 | 0.9753 |
+| Users evaluated | 1840 |
 
-Nhận xét: LightGBMClassifier đạt ROC-AUC khoảng 0.80, cho thấy khả năng phân biệt bài đã nghe/chưa nghe tương đối tốt. NDCG@10 đạt 0.8440, thể hiện khả năng xếp hạng Top-N tốt.
+Nhận xét: LightGBMClassifier đạt kết quả cao trên cả classification metrics và ranking metrics. ROC-AUC đạt 0.9792, cho thấy mô hình phân biệt tốt giữa bài đã nghe và chưa nghe. NDCG@10 đạt 0.9753, phản ánh chất lượng xếp hạng Top-N tốt, các bài phù hợp có xu hướng xuất hiện ở vị trí cao.
 
 ## 4.3. Kết quả RandomForestClassifier
 
 | Metric | Giá trị |
 |---|---:|
-| Accuracy | 0.6483 |
-| Precision | 0.6851 |
-| Recall | 0.5489 |
-| F1 | 0.6095 |
-| ROC-AUC | 0.7277 |
-| Precision@10 | 0.6079 |
-| Recall@10 | 0.7506 |
-| NDCG@10 | 0.7644 |
-| Users evaluated | 1844 |
+| Accuracy | 0.8649 |
+| Precision | 0.8317 |
+| Recall | 0.9149 |
+| F1 | 0.8713 |
+| ROC-AUC | 0.9557 |
+| Precision@10 | 0.7528 |
+| Recall@10 | 0.8886 |
+| NDCG@10 | 0.9520 |
+| Users evaluated | 1840 |
 
-Nhận xét: RandomForestClassifier hoạt động ổn ở vai trò baseline nhưng thấp hơn LightGBMClassifier trên hầu hết chỉ số.
+Nhận xét: RandomForestClassifier cải thiện rõ rệt sau khi dữ liệu synthetic được sinh lại theo hướng bám sát sở thích user hơn. Tuy vậy, mô hình vẫn thấp hơn LightGBMClassifier ở các chỉ số tổng hợp như F1, ROC-AUC và NDCG@10.
 
 ## 4.4. So sánh hai mô hình
 
 | Model | F1 | ROC-AUC | Precision@10 | Recall@10 | NDCG@10 |
 |---|---:|---:|---:|---:|---:|
-| LightGBMClassifier | 0.7182 | 0.8028 | 0.6597 | 0.7985 | 0.8440 |
-| RandomForestClassifier | 0.6095 | 0.7277 | 0.6079 | 0.7506 | 0.7644 |
+| LightGBMClassifier | 0.9455 | 0.9792 | 0.7679 | 0.9021 | 0.9753 |
+| RandomForestClassifier | 0.8713 | 0.9557 | 0.7528 | 0.8886 | 0.9520 |
 
 LightGBMClassifier tốt hơn RandomForestClassifier trên:
 
@@ -574,7 +585,7 @@ LightGBMClassifier tốt hơn RandomForestClassifier trên:
 - Recall@10;
 - NDCG@10.
 
-Do đó LightGBMClassifier phù hợp làm mô hình chính cho hệ gợi ý hiện tại, trong khi RandomForestClassifier đóng vai trò baseline để đối chiếu.
+Do đó LightGBMClassifier phù hợp làm mô hình chính cho hệ gợi ý hiện tại, trong khi RandomForestClassifier đóng vai trò baseline để đối chiếu. Kết quả cao một phần đến từ dữ liệu synthetic có quy luật rõ giữa hồ sơ user và bài đã nghe; vì vậy khi trình bày cần nêu đây là đánh giá trên dữ liệu mô phỏng, chưa thay thế kiểm thử trên dữ liệu người dùng thật.
 
 ## 4.5. Triển khai web demo
 
@@ -586,6 +597,8 @@ Web demo Flask gồm các chức năng:
 - cập nhật profile bằng modal trong trang hồ sơ;
 - duyệt danh sách bài hát;
 - xem chi tiết bài hát;
+- bấm `Nghe nhạc` để ghi nhận hành vi đã nghe;
+- tự cập nhật một phần hồ sơ âm thanh của user theo bài vừa nghe;
 - xem danh sách bài đã nghe;
 - xem gợi ý cá nhân hóa theo `match_score`;
 - xem dashboard admin với metrics classification/ranking.
@@ -606,7 +619,7 @@ Các trang chính:
 
 ## 5.1. Kết quả đạt được
 
-Đề tài đã xây dựng được hệ gợi ý nhạc dựa trên thông tin cá nhân bằng cách kết hợp dữ liệu bài hát từ FMA, hồ sơ user và dữ liệu nghe nhạc mô phỏng. Hệ thống hiện dùng implicit feedback thay vì rating, phù hợp hơn với bối cảnh nghe nhạc thực tế.
+Đề tài đã xây dựng được hệ gợi ý nhạc dựa trên thông tin cá nhân bằng cách kết hợp dữ liệu bài hát từ FMA, hồ sơ user và dữ liệu nghe nhạc mô phỏng. Hệ thống sử dụng implicit feedback để học từ trạng thái bài đã nghe/chưa nghe và dự đoán xác suất phù hợp giữa user và bài hát.
 
 Các kết quả chính:
 
@@ -616,7 +629,8 @@ Các kết quả chính:
 - Lưu hồ sơ user và sở thích âm thanh.
 - Sinh được 3000 user mô phỏng và 100000 interaction đã nghe.
 - Tạo được 200000 training pairs cân bằng positive/negative.
-- Chuyển bài toán từ rating regression sang binary classification.
+- Sinh dữ liệu theo hướng cân bằng giữa sở thích cố định và hành vi khám phá.
+- Mô hình hóa bài toán dưới dạng binary classification với nhãn `listened`.
 - Triển khai RandomForestClassifier và LightGBMClassifier.
 - Đánh giá bằng Accuracy, Precision, Recall, F1, ROC-AUC, Precision@10, Recall@10, NDCG@10.
 - Gợi ý Top-N bằng `match_score` trong khoảng 0–1.
