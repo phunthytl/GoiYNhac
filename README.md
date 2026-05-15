@@ -1,85 +1,178 @@
 # Hệ gợi ý nhạc dựa trên thông tin cá nhân
 
-Project sử dụng FMA metadata làm dữ liệu bài hát và sinh thêm dữ liệu người dùng/tương tác giả lập có kiểm soát để xây dựng hệ gợi ý nhạc cá nhân hóa.
+Project xây dựng hệ gợi ý nhạc cá nhân hóa từ FMA metadata, hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Phiên bản hiện tại dùng implicit feedback: hệ thống học từ trạng thái `đã nghe/chưa nghe`, không còn dự đoán rating 1–5.
 
 ## 1. Dữ liệu
 
-Dataset gốc: FMA - Free Music Archive
+Dataset gốc: FMA - Free Music Archive.
 
-Thư mục dữ liệu đã extract:
+Các nguồn chính:
 
 ```text
 fma_metadata/
 ├── tracks.csv
 ├── genres.csv
-├── features.csv
 ├── echonest.csv
 └── ...
 ```
 
-FMA có metadata và audio features của bài hát, nhưng không có đầy đủ thông tin cá nhân/rating người dùng. Vì vậy project tạo thêm:
+FMA cung cấp metadata và audio features của bài hát, nhưng không có đầy đủ hồ sơ user và lịch sử nghe cá nhân. Vì vậy project sinh thêm dữ liệu user và interaction mô phỏng trong SQLite.
+
+## 2. Hướng mô hình hiện tại
+
+Bài toán được chuyển thành phân loại nhị phân:
 
 ```text
-data/musics.db
+user + song -> listened
 ```
 
-## 2. Model hiện tại
-
-Đã triển khai hai mô hình để so sánh:
+Trong đó:
 
 ```text
-RandomForestRegressor
-LightGBMRegressor
+1 = user đã nghe / bài phù hợp
+0 = user chưa nghe / negative sample
 ```
 
-Mục tiêu model:
+Hai mô hình đang dùng:
 
 ```text
-Dự đoán rating / preference score giữa user và bài hát.
+LightGBMClassifier
+RandomForestClassifier
 ```
 
-Sau đó xếp hạng các bài hát theo `predicted_rating` để lấy Top-N recommendation.
+Khi gợi ý, hệ thống lấy các bài user chưa nghe, dự đoán xác suất `listened = 1`, sau đó sắp xếp giảm dần theo `match_score` để lấy Top-N bài hát.
 
-## 3. Các file chính
+## 3. Schema chính
 
 ```text
-config.py                    Cấu hình path và tham số mặc định
-preprocess_songs.py          Xử lý FMA metadata/features và lưu bảng songs vào SQLite
-generate_synthetic_data.py   Sinh interaction/rating giả lập và lưu training_pairs vào SQLite
-model/train_random_forest.py Train RandomForestRegressor và đánh giá
-model/train_lightgbm.py      Train LightGBMRegressor và đánh giá
-recommend.py                 Gợi ý Top-N bài hát cho một user
+accounts          Tài khoản đăng nhập
+user_profiles     Hồ sơ cá nhân và sở thích âm thanh
+songs             Bài hát đã tiền xử lý
+interactions      Lịch sử bài user đã nghe
+training_pairs    Dữ liệu train gồm positive/negative samples
+```
+
+`interactions` chỉ lưu bài đã nghe:
+
+```text
+user_id
+song_id
+listened = 1
+```
+
+`training_pairs` có cả hai lớp:
+
+```text
+listened = 1   positive sample
+listened = 0   negative sample
+```
+
+## 4. Các file chính
+
+```text
+config.py                    Cấu hình path, random state, TARGET=listened
+preprocess_songs.py          Xử lý FMA metadata/Echonest features và lưu songs vào SQLite
+generate_synthetic_data.py   Sinh user, lịch sử đã nghe và negative samples
+model/train_lightgbm.py      Train LightGBMClassifier
+model/train_random_forest.py Train RandomForestClassifier
+recommend.py                 Gợi ý Top-N theo match_score
 app.py                       Web demo Flask
-MODEL_NOTES.md               Ghi chú lựa chọn model
-BAO_CAO_HE_GOI_Y_NHAC.md     Báo cáo đầy đủ từ lý thuyết đến triển khai
+templates/                   Giao diện login, home, profile, recommendations, admin
 ```
 
-Output sau khi chạy:
+## 5. Tiền xử lý bài hát
+
+Tiền xử lý dùng trực tiếp audio features từ `echonest.csv`:
 
 ```text
-data/musics.db
-model/random_forest_recommender.joblib
-model/lightgbm_recommender.joblib
-reports/random_forest_metrics.json
-reports/lightgbm_metrics.json
+energy
+valence
+danceability
+tempo
+acousticness
+instrumentalness
+liveness
+speechiness
 ```
 
-## 4. Cài thư viện
+Các cột lưu trong bảng `songs` được lọc gọn, chỉ giữ metadata và feature cần cho app/model. Các feature thô không dùng như `mfcc_*`, `spectral_*`, `subset`, `hotttness`, `listens`, `favorites`, `interest` đã được bỏ khỏi DB sau khi tạo feature tổng hợp như `popularity`.
+
+## 6. Sinh dữ liệu mô phỏng
+
+Lệnh hiện tại:
 
 ```bash
-pip install -r requirements.txt
+python generate_synthetic_data.py --users 3000 --total-interactions 100000 --negative-ratio 1.0
 ```
 
-## 5. Chạy pipeline
+Kết quả gần nhất:
+
+```text
+users: 3000
+songs: 8801
+interactions: 100000
+training_pairs: 200000
+```
+
+Phân phối label trong `training_pairs`:
+
+```text
+listened=0: 100000
+listened=1: 100000
+```
+
+Ý nghĩa:
+
+- `interactions`: chỉ chứa bài user đã nghe.
+- `training_pairs`: gồm 100k positive + 100k negative để train classifier.
+- Không còn rating 1–5.
+- Không còn cột `liked`.
+
+## 7. Train/test split
+
+Không dùng random row split toàn cục nữa.
+
+Hiện dùng per-user holdout:
+
+```text
+Mỗi user:
+- positive listened=1 được chia train/test
+- negative listened=0 được chia train/test
+```
+
+Cách chia này phù hợp hơn với bài toán gợi ý vì test mô phỏng tình huống: với một user đã có một phần lịch sử nghe, model cần xếp hạng các bài phù hợp còn lại.
+
+## 8. Kết quả model hiện tại
+
+Dữ liệu train gần nhất:
+
+```text
+rows: 200000
+train_size: 159968
+test_size: 40032
+```
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Precision@10 | Recall@10 | NDCG@10 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| LightGBMClassifier | 0.7283 | 0.7459 | 0.6925 | 0.7182 | 0.8028 | 0.6597 | 0.7985 | 0.8440 |
+| RandomForestClassifier | 0.6483 | 0.6851 | 0.5489 | 0.6095 | 0.7277 | 0.6079 | 0.7506 | 0.7644 |
+
+Nhận xét:
+
+- LightGBMClassifier đang tốt hơn RandomForestClassifier trên cả F1, ROC-AUC và NDCG@10.
+- `match_score` là xác suất model dự đoán user có khả năng nghe bài đó.
+- Các metrics RMSE/MAE đã bỏ vì không còn bài toán hồi quy rating.
+
+## 9. Chạy pipeline
 
 ```bash
 python preprocess_songs.py --song-limit 20000
-python generate_synthetic_data.py --users 1200 --interactions-per-user 35
-python model/train_random_forest.py
+python generate_synthetic_data.py --users 3000 --total-interactions 100000 --negative-ratio 1.0
 python model/train_lightgbm.py
+python model/train_random_forest.py
 ```
 
-## 6. Gợi ý nhạc cho user
+## 10. Gợi ý nhạc CLI
 
 ```bash
 python recommend.py --user-id 1 --top-k 10
@@ -91,42 +184,42 @@ Lọc theo genre:
 python recommend.py --user-id 1 --top-k 10 --genre Pop
 ```
 
-## 7. Kết quả model hiện tại
+Output có `match_score` trong khoảng 0–1.
 
-Kết quả gần nhất:
-
-| Model | RMSE | MAE | Precision@10 | Recall@10 | NDCG@10 |
-|---|---:|---:|---:|---:|---:|
-| RandomForestRegressor | 0.46724221100318813 | 0.3888330715761068 | 0.9406250000000002 | 0.8144322581953075 | 0.9872160730141202 |
-| LightGBMRegressor | 0.47460454020624315 | 0.38197338505983425 | 0.9416666666666668 | 0.8153886281716684 | 0.9875261240560492 |
-
-Cả hai mô hình dùng 63794 rows, train size 51035, test size 12759 và đánh giá trên 384 users.
-
-## 8. Chạy web demo
+## 11. Chạy web demo
 
 ```bash
 python app.py
 ```
 
-Mở trình duyệt:
+Mở:
 
 ```text
 http://127.0.0.1:5000
 ```
 
+Demo login:
+
+```text
+user0001 / User@123456
+```
+
 Các trang chính:
 
 ```text
-/login              Đăng nhập tài khoản thật
+/login              Đăng nhập
+/register           Đăng ký
+/setup              Nhập thông tin cá nhân và sở thích âm thanh
 /home               Duyệt danh sách bài hát
-/recommendations    Gợi ý Top-N bằng LightGBMRegressor
-/profile            Hồ sơ user, lịch sử interaction và cập nhật thông tin bằng modal
+/recommendations    Gợi ý Top-N theo match_score
+/profile            Hồ sơ user, bài đã nghe, cập nhật thông tin bằng modal
 /admin              Dashboard dữ liệu/model
 ```
 
-## 9. Hướng tiếp theo
+## 12. Hướng phát triển tiếp
 
-- Thêm báo cáo EDA dữ liệu nhạc/user/interaction.
-- Cải thiện cách sinh user profile/rating để dữ liệu cân bằng hơn.
-- Bổ sung feature importance để giải thích mô hình.
-- Ghi nhận interaction thật từ hành vi nghe/click/rating của người dùng để thay thế dần dữ liệu mô phỏng.
+- Ghi nhận hành vi nghe/click thật từ người dùng thay vì chỉ dùng dữ liệu mô phỏng.
+- Bổ sung thời gian nghe, số lần nghe lại, skip, favorite để làm implicit feedback phong phú hơn.
+- Thêm giải thích gợi ý dựa trên genre/audio features.
+- Tối ưu negative sampling để phản ánh hành vi thực tế hơn.
+- Thử thêm mô hình ranking chuyên biệt như LambdaMART hoặc learning-to-rank.

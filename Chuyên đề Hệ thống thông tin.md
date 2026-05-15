@@ -1,792 +1,640 @@
-# **CHƯƠNG 1\. GIỚI THIỆU CHUNG** {#chương-1.-giới-thiệu-chung}
+# CHƯƠNG 1. GIỚI THIỆU CHUNG
 
-## **1.1. Bối cảnh đề tài** {#1.1.-bối-cảnh-đề-tài}
+## 1.1. Bối cảnh đề tài
 
-Trong thời đại số, các nền tảng nghe nhạc trực tuyến như Spotify, Apple Music, YouTube Music hoặc SoundCloud cung cấp cho người dùng một kho nhạc rất lớn. Số lượng bài hát ngày càng tăng giúp người dùng có nhiều lựa chọn hơn, nhưng đồng thời cũng tạo ra vấn đề quá tải thông tin. Người dùng khó tự tìm được bài hát phù hợp với sở thích cá nhân, tâm trạng, ngôn ngữ yêu thích hoặc thói quen nghe nhạc của mình.
+Trong thời đại số, các nền tảng nghe nhạc trực tuyến cung cấp kho nhạc rất lớn cho người dùng. Số lượng bài hát tăng nhanh giúp người dùng có nhiều lựa chọn hơn, nhưng đồng thời tạo ra vấn đề quá tải thông tin. Người dùng khó tự tìm được bài hát phù hợp với sở thích cá nhân, ngôn ngữ yêu thích, tâm trạng hoặc thói quen nghe nhạc của mình.
 
-Hệ gợi ý nhạc được xây dựng nhằm hỗ trợ người dùng khám phá bài hát phù hợp hơn. Thay vì chỉ hiển thị danh sách bài hát phổ biến chung cho tất cả mọi người, hệ thống có thể tận dụng thông tin cá nhân và đặc trưng âm thanh của bài hát để đưa ra danh sách gợi ý mang tính cá nhân hóa.
+Hệ gợi ý nhạc được xây dựng nhằm hỗ trợ người dùng khám phá bài hát phù hợp hơn. Thay vì chỉ hiển thị danh sách bài hát phổ biến chung cho tất cả mọi người, hệ thống tận dụng hồ sơ người dùng và đặc trưng âm thanh của bài hát để tạo danh sách gợi ý cá nhân hóa.
 
-Đề tài “Hệ gợi ý nhạc dựa trên thông tin cá nhân” tập trung xây dựng một hệ thống gợi ý sử dụng dữ liệu metadata và audio features từ bộ dữ liệu FMA, kết hợp với hồ sơ người dùng và dữ liệu tương tác được mô phỏng. Hệ thống huấn luyện mô hình học máy để dự đoán mức độ phù hợp giữa người dùng và bài hát, sau đó xếp hạng các bài hát theo điểm dự đoán để tạo danh sách gợi ý Top-N.
+Đề tài “Hệ gợi ý nhạc dựa trên thông tin cá nhân” tập trung xây dựng một hệ thống gợi ý sử dụng dữ liệu metadata và audio features từ bộ dữ liệu FMA, kết hợp với hồ sơ người dùng và dữ liệu nghe nhạc mô phỏng. Phiên bản hiện tại không còn dự đoán rating 1–5, mà chuyển sang hướng implicit feedback: hệ thống học từ trạng thái bài hát đã nghe/chưa nghe và dự đoán xác suất người dùng có khả năng nghe một bài hát.
 
-## **1.2. Mục tiêu đề tài** {#1.2.-mục-tiêu-đề-tài}
+## 1.2. Mục tiêu đề tài
 
-Đề tài hướng đến mục tiêu xây dựng một hệ thống gợi ý nhạc cá nhân hóa có khả năng sử dụng thông tin hồ sơ người dùng, sở thích âm thanh và đặc trưng bài hát để dự đoán mức độ phù hợp giữa người dùng và từng bài hát. Từ đó, hệ thống xếp hạng và đề xuất danh sách bài hát phù hợp nhất cho từng người dùng.
+Mục tiêu của đề tài là xây dựng hệ gợi ý nhạc cá nhân hóa có khả năng sử dụng thông tin hồ sơ người dùng, sở thích âm thanh và đặc trưng bài hát để dự đoán mức độ phù hợp giữa người dùng và bài hát. Hệ thống xếp hạng các bài hát theo xác suất phù hợp và đề xuất danh sách Top-N cho từng người dùng.
 
-Các mục tiêu cụ thể gồm:
+Các mục tiêu cụ thể:
 
-1. Tìm hiểu cơ sở lý thuyết về hệ gợi ý, đặc biệt là bài toán gợi ý nhạc cá nhân hóa và gợi ý dựa trên hồ sơ người dùng.
+1. Tìm hiểu cơ sở lý thuyết về hệ gợi ý, đặc biệt là gợi ý nhạc cá nhân hóa dựa trên hồ sơ người dùng và implicit feedback.
+2. Khai thác dữ liệu FMA metadata, tiền xử lý thông tin bài hát và đặc trưng âm thanh, sau đó lưu vào SQLite để phục vụ web app và mô hình.
+3. Sinh dữ liệu người dùng và lịch sử nghe nhạc mô phỏng do FMA không cung cấp đầy đủ dữ liệu cá nhân/hành vi nghe.
+4. Thiết kế bộ đặc trưng kết hợp giữa user profile, metadata bài hát và audio features.
+5. Triển khai và so sánh hai mô hình học máy trên dữ liệu bảng: RandomForestClassifier và LightGBMClassifier.
+6. Đánh giá mô hình bằng các chỉ số phân loại và xếp hạng như Accuracy, Precision, Recall, F1, ROC-AUC, Precision@10, Recall@10 và NDCG@10.
+7. Xây dựng web demo Flask có đăng ký/đăng nhập, lưu hồ sơ cá nhân, cập nhật sở thích nghe nhạc và hiển thị gợi ý Top-N.
 
-2. Khai thác bộ dữ liệu FMA metadata, tiền xử lý thông tin bài hát và đặc trưng âm thanh, sau đó lưu trữ dữ liệu đã xử lý trong cơ sở dữ liệu SQLite để phục vụ web app và mô hình gợi ý.
-
-3. Xây dựng dữ liệu interaction/rating mô phỏng có kiểm soát do FMA không cung cấp đầy đủ thông tin đánh giá cá nhân của người dùng.
-
-4. Thiết kế bộ đặc trưng kết hợp giữa hồ sơ người dùng, metadata bài hát, đặc trưng âm thanh và các đặc trưng so khớp giữa sở thích người dùng với bài hát.
-
-5. Triển khai và so sánh hai mô hình học máy trên dữ liệu bảng, gồm RandomForestRegressor và LightGBMRegressor, cho bài toán dự đoán rating/preference score.
-
-6. Đánh giá chất lượng mô hình bằng các chỉ số hồi quy và xếp hạng như RMSE, MAE, Precision@10, Recall@10 và NDCG@10.
-
-7. Xây dựng web demo Flask có đăng ký/đăng nhập tài khoản, lưu hồ sơ cá nhân, cập nhật sở thích nghe nhạc và hiển thị danh sách gợi ý Top-N cho từng người dùng.
-
-## **1.3. Bài toán nghiên cứu** {#1.3.-bài-toán-nghiên-cứu}
+## 1.3. Bài toán nghiên cứu
 
 Bài toán được đặt ra như sau:
 
-\- Với một người dùng có thông tin cá nhân và sở thích âm nhạc ban đầu, hệ thống cần dự đoán mức độ phù hợp của từng bài hát đối với người dùng đó, sau đó xếp hạng và đề xuất các bài hát phù hợp nhất.
+- Với một người dùng có thông tin cá nhân và sở thích âm nhạc ban đầu, hệ thống cần dự đoán xác suất người dùng có khả năng nghe từng bài hát chưa nghe, sau đó xếp hạng và đề xuất các bài hát phù hợp nhất.
 
-Đầu vào của bài toán gồm:
+Đầu vào của bài toán:
 
-- thông tin người dùng,
-
-- sở thích thể loại,
-
-- ngôn ngữ nhạc yêu thích,
-
-- sở thích về năng lượng, nhịp độ, độ vui tươi, độ phổ biến,
-
-- thông tin bài hát,
-
+- thông tin người dùng: tuổi, giới tính, nhóm tuổi;
+- thể loại yêu thích;
+- ngôn ngữ nhạc yêu thích;
+- sở thích âm thanh: energy, valence, danceability, tempo, popularity, acousticness, instrumentalness, liveness, speechiness;
+- metadata bài hát;
 - đặc trưng âm thanh của bài hát.
 
-Đầu ra của bài toán là:
-
-\- predicted\_rating(user, track)
-
-hoặc có thể hiểu là:
-
-\- preference\_score(user, track)
-
-Sau khi có điểm dự đoán, hệ thống sắp xếp các bài hát theo điểm giảm dần và lấy Top-N bài hát làm danh sách gợi ý.
-
-# **CHƯƠNG 2\. CƠ SỞ LÝ THUYẾT** {#chương-2.-cơ-sở-lý-thuyết}
-
-## **2.1. Khái niệm hệ gợi ý** {#2.1.-khái-niệm-hệ-gợi-ý}
-
-Hệ gợi ý là một hệ thống có khả năng đề xuất các đối tượng phù hợp với từng người dùng dựa trên dữ liệu đã thu thập được. Các đối tượng được gợi ý có thể là phim, bài hát, sản phẩm, khóa học, bài viết, video hoặc bất kỳ item nào trong một hệ thống thông tin.
-
-Trong bài toán gợi ý nhạc:
-
-- Người dùng \= listener / user
-
-- Đối tượng gợi ý \= track / song / bài hát
-
-Mục tiêu của hệ gợi ý không chỉ là tìm bài hát phổ biến nhất, mà là tìm bài hát phù hợp nhất với từng người dùng cụ thể. Hai người dùng khác nhau có thể nhận hai danh sách gợi ý khác nhau dù truy cập cùng một hệ thống.
-
-Một hệ gợi ý thường cần giải quyết ba câu hỏi chính:
-
-1. Người dùng là ai?  
-2. Item có đặc điểm gì?  
-3. Người dùng có khả năng thích item đó đến mức nào?
-
-Với hệ gợi ý nhạc dựa trên thông tin cá nhân, hệ thống đặc biệt quan tâm đến hồ sơ người dùng và sở thích nghe nhạc ban đầu, chẳng hạn thể loại yêu thích, ngôn ngữ yêu thích, độ sôi động mong muốn hoặc mức độ phổ biến của bài hát.
-
-## **2.2. Vai trò của hệ gợi ý trong ứng dụng nghe nhạc** {#2.2.-vai-trò-của-hệ-gợi-ý-trong-ứng-dụng-nghe-nhạc}
-
-Trong ứng dụng nghe nhạc, hệ gợi ý có nhiều vai trò quan trọng:
-
-- Giúp người dùng khám phá bài hát mới.  
-- Giảm thời gian tìm kiếm thủ công.  
-- Cá nhân hóa trải nghiệm nghe nhạc.  
-- Tăng mức độ tương tác của người dùng với hệ thống.  
-- Hỗ trợ xây dựng playlist tự động.  
-- Giữ chân người dùng nhờ nội dung phù hợp hơn.
-
-Nếu không có hệ gợi ý, người dùng thường chỉ thấy các bảng xếp hạng chung như bài hát phổ biến hoặc bài hát mới phát hành. Những danh sách này không phản ánh đầy đủ sở thích cá nhân của từng người.
-
-Ví dụ, một người thích nhạc Electronic sôi động và một người thích Classical nhẹ nhàng không nên nhận cùng một danh sách gợi ý. Hệ gợi ý giúp hệ thống phân biệt và cá nhân hóa kết quả cho từng người dùng.
-
-## **2.3. Các thành phần cơ bản của hệ gợi ý** {#2.3.-các-thành-phần-cơ-bản-của-hệ-gợi-ý}
-
-Một hệ gợi ý thường gồm ba thành phần dữ liệu chính:
-
-### ***2.3.1. User*** {#2.3.1.-user}
-
-User là người sử dụng hệ thống. Thông tin user có thể bao gồm:
-
-- mã người dùng,  
-- tuổi,  
-- giới tính,  
-- ngôn ngữ yêu thích,  
-- thể loại yêu thích,  
-- lịch sử nghe nhạc,  
-- lịch sử đánh giá,  
-- hành vi tương tác.
-
-Trong đề tài này, user được mô tả bằng các thông tin cá nhân và sở thích âm thanh như:
-
-- age  
-- gender  
-- favorite\_genres  
-- language\_preference  
-- preferred\_energy  
-- preferred\_valence  
-- preferred\_danceability  
-- preferred\_tempo  
-- preferred\_popularity
-
-### ***2.3.2. Item*** {#2.3.2.-item}
-
-Item là đối tượng cần gợi ý. Trong bài toán này, item là bài hát.
-
-Một bài hát có thể được mô tả bởi:
-
-- tên bài hát,  
-- nghệ sĩ,  
-- album,  
-- thể loại,  
-- ngôn ngữ,  
-- thời lượng,  
-- lượt nghe,  
-- lượt yêu thích,  
-- đặc trưng âm thanh.
-
-Trong project, item được lấy từ FMA metadata, được tiền xử lý và lưu trực tiếp vào cơ sở dữ liệu SQLite `data/musics.db`, bảng `songs`.
-
-### ***2.3.3. Interaction*** {#2.3.3.-interaction}
-
-Interaction là tương tác giữa user và item. Trong hệ gợi ý nhạc, interaction có thể là:
-
-- nghe bài hát,  
-- bỏ qua bài hát,  
-- thích bài hát,  
-- thêm vào playlist,  
-- đánh giá sao,  
-- nghe lại nhiều lần.
-
-## **2.4. Các hướng tiếp cận phổ biến trong hệ gợi ý** {#2.4.-các-hướng-tiếp-cận-phổ-biến-trong-hệ-gợi-ý}
-
-### ***2.4.1. Popularity-Based Recommendation*** {#2.4.1.-popularity-based-recommendation}
-
-Popularity-Based Recommendation là cách gợi ý đơn giản nhất. Hệ thống đề xuất các item phổ biến nhất cho tất cả người dùng.
-
-Ví dụ: Gợi ý top 10 bài hát có lượt nghe cao nhất.
-
-Ưu điểm:
-
-- Dễ triển khai.  
-- Không cần thông tin cá nhân.  
-- Phù hợp khi chưa có dữ liệu người dùng.
-
-Nhược điểm:
-
-- Không cá nhân hóa.  
-- Người dùng khác nhau nhận cùng một kết quả.  
-- Không phản ánh gu âm nhạc riêng.
-
-### ***2.4.2. Content-Based Filtering*** {#2.4.2.-content-based-filtering}
-
-Content-Based Filtering dựa trên đặc trưng của item. Trong bài toán nhạc, đặc trưng item có thể gồm:
-
-- genre,  
-- artist,  
-- language,  
-- duration,  
-- energy,  
-- valence,  
-- danceability,  
-- tempo,  
-- popularity.
-
-Hệ thống sẽ gợi ý các bài hát có đặc trưng giống với sở thích của người dùng.
-
-Ví dụ: Nếu user thích Electronic và bài hát có energy cao, hệ thống ưu tiên các bài Electronic có energy tương tự.
-
-Ưu điểm:
-
-- Phù hợp với user mới nếu người dùng nhập sở thích ban đầu.  
-- Có thể giải thích được vì sao một bài hát được gợi ý.  
-- Không phụ thuộc hoàn toàn vào hành vi của cộng đồng.
-
-Nhược điểm:
-
-- Dễ bị giới hạn trong vùng sở thích cũ.  
-- Khó gợi ý các bài hát khác gu nhưng người dùng có thể thích.  
-- Chất lượng phụ thuộc vào đặc trưng item.
-
-### ***2.4.3. Collaborative Filtering*** {#2.4.3.-collaborative-filtering}
-
-Collaborative Filtering dựa trên hành vi của cộng đồng người dùng. Ý tưởng chính là những người dùng có hành vi giống nhau trong quá khứ có thể sẽ thích các item giống nhau trong tương lai.
-
-Ví dụ: user A và user B cùng thích nhiều bài Pop, user B thích thêm bài X.
-
-→ Hệ thống có thể gợi ý bài X cho User A.
-
-Ưu điểm:
-
-- Khai thác được hành vi cộng đồng.  
-- Có thể gợi ý các bài hát ngoài sở thích khai báo ban đầu.  
-- Không cần hiểu sâu nội dung bài hát.
-
-Nhược điểm:
-
-- Khó xử lý user mới chưa có lịch sử tương tác.  
-- Khó xử lý bài hát mới chưa có tương tác.  
-- Cần dữ liệu tương tác đủ lớn.  
-- Dữ liệu thường thưa vì mỗi user chỉ nghe một phần rất nhỏ trong kho nhạc.
-
-### ***2.4.4. Profile-Based Recommendation*** {#2.4.4.-profile-based-recommendation}
-
-Profile-Based Recommendation sử dụng hồ sơ cá nhân của người dùng như:
-
-- tuổi,  
-- giới tính,  
-- thể loại yêu thích,  
-- ngôn ngữ yêu thích,  
-- sở thích âm thanh.
-
-Cách tiếp cận này phù hợp với bài toán của đề tài vì hệ thống cần gợi ý nhạc dựa trên thông tin cá nhân ban đầu.
-
-Ưu điểm:
-
-- Hữu ích khi user chưa có nhiều lịch sử nghe nhạc.  
-- Dễ kết hợp với form nhập sở thích.  
-- Có thể giải thích gợi ý dựa trên profile.
-
-Nhược điểm:
-
-- Nếu thông tin user nhập ít hoặc không chính xác, chất lượng gợi ý giảm.  
-- Profile ban đầu có thể chưa phản ánh đầy đủ gu nghe nhạc thực tế.  
-- Cần cập nhật profile theo hành vi thực tế nếu hệ thống triển khai lâu dài.
-
-## **2.5. Bài toán cold-start** {#2.5.-bài-toán-cold-start}
-
-Cold-start là một trong những vấn đề quan trọng nhất của hệ gợi ý.
-
-Có hai loại cold-start phổ biến:
-
-### ***2.5.1. User cold-start*** {#2.5.1.-user-cold-start}
-
-User cold-start xảy ra khi người dùng mới chưa có lịch sử tương tác. Khi đó, các phương pháp dựa vào hành vi như Collaborative Filtering khó đưa ra gợi ý chính xác.
-
-Cách xử lý:
-
-- yêu cầu user nhập sở thích ban đầu,  
-- dùng thông tin cá nhân,  
-- dùng thể loại yêu thích,  
-- dùng bài hát phổ biến trong nhóm sở thích.
-
-### ***2.5.2. Item cold-start*** {#2.5.2.-item-cold-start}
-
-Item cold-start xảy ra khi bài hát mới chưa có lượt nghe hoặc rating. Khi đó, hệ thống khó biết bài hát phù hợp với ai nếu chỉ dựa trên tương tác.
-
-Cách xử lý:
-
-- dùng metadata của bài hát,  
-- dùng genre,  
-- dùng audio features,  
-- dùng artist/album/language.
-
-## **2.6. Đặc trưng âm thanh trong gợi ý nhạc** {#2.6.-đặc-trưng-âm-thanh-trong-gợi-ý-nhạc}
-
-Âm nhạc có nhiều đặc trưng khác với phim hoặc sản phẩm thương mại. Ngoài thể loại và nghệ sĩ, bài hát còn có các đặc điểm âm thanh như năng lượng, nhịp độ, sắc thái cảm xúc và độ phù hợp để nhảy.
-
-Trong project, các đặc trưng âm thanh được biểu diễn bằng các chỉ số:
-
-1. Energy: thể hiện mức độ mạnh, sôi động của bài nhạc. Energy thấp: nhẹ, êm, thư giãn. Energy cao: mạnh, dồn dập, sôi động.  
-2. Valence: thể hiện sắc thái cảm xúc tích cực của bài nhạc. Valence thấp: buồn, tối, căng thẳng. Valence cao: vui, tươi, sáng.  
-3. Danceability: thể hiện mức độ phù hợp để nhún nhảy hoặc bắt nhịp. Danceability cao: nhịp rõ, đều, dễ bắt beat.  
-4. Tempo: thể hiện tốc độ cảm nhận của bài hát. Tempo thấp: chậm, nhẹ, thư giãn. Tempo cao: nhanh, sôi động.  
-5. Popularity: thể hiện mức độ phổ biến của bài hát, thường liên quan đến lượt nghe, lượt thích hoặc mức độ quan tâm. Popularity thấp: bài ít nổi, phù hợp khám phá. Popularity cao: bài phổ biến hơn.
-
-## **2.7.  Bài toán Regression trong hệ gợi ý** {#2.7.-bài-toán-regression-trong-hệ-gợi-ý}
-
-Trong đề tài này, bài toán gợi ý được đưa về bài toán hồi quy:
-
-- Input: user features \+ song features \+ matching features  
-- Output: rating / preference score
-
-Mô hình dự đoán một giá trị liên tục thể hiện mức độ phù hợp giữa người dùng và bài hát. Sau đó, hệ thống sắp xếp bài hát theo điểm dự đoán để đưa ra Top-N recommendation.
-
-Cách tiếp cận này phù hợp khi dữ liệu có rating hoặc có thể quy đổi tương tác thành điểm số.
-
-## **2.8. Các chỉ số đánh giá hệ gợi ý** {#2.8.-các-chỉ-số-đánh-giá-hệ-gợi-ý}
-
-### ***2.8.1. RMSE*** {#2.8.1.-rmse}
-
-RMSE là căn bậc hai của sai số bình phương trung bình.
-
-RMSE \= sqrt(mean((y\_true \- y\_pred)^2))
-
-Ý nghĩa:
-
-* Càng thấp càng tốt.  
-* Phạt mạnh các dự đoán sai lệch lớn.  
-* Phù hợp để đánh giá mô hình dự đoán rating.
-
-### ***2.8.2. MAE*** {#2.8.2.-mae}
-
-MAE là sai số tuyệt đối trung bình.
-
-MAE \= mean(abs(y\_true \- y\_pred))
-
-Ý nghĩa:
-
-* Càng thấp càng tốt.  
-* Dễ hiểu hơn RMSE.  
-* Cho biết trung bình mô hình dự đoán lệch bao nhiêu điểm rating.
-
-### ***2.8.3. Precision@k*** {#2.8.3.-precision@k}
-
-Precision@k đo trong k bài hát được gợi ý đầu tiên, có bao nhiêu bài thực sự phù hợp.
-
-Precision@k \= số bài relevant trong Top k/ k
-
-Ý nghĩa:
-
-\- Càng cao càng tốt.
-
-\- Phản ánh độ chính xác của danh sách gợi ý đầu tiên.
-
-### ***2.8.4. Recall@k*** {#2.8.4.-recall@k}
-
-Recall@k đo trong tất cả các bài phù hợp với user, hệ thống tìm lại được bao nhiêu bài trong Top k.
-
-Recall@k \= số bài relevant trong Top k/ tổng số bài relevant
-
-Ý nghĩa:
-
-\- Càng cao càng tốt.
-
-\- Phản ánh khả năng bao phủ các bài hát phù hợp.
-
-### ***2.8.5. NDCG@k*** {#2.8.5.-ndcg@k}
-
-NDCG@k  đánh giá chất lượng thứ hạng của Top k. Nếu bài phù hợp được xếp ở vị trí cao hơn, điểm NDCG sẽ cao hơn.
-
-Ý nghĩa:
-
-\- Càng gần 1 càng tốt.
-
-\- Phù hợp với hệ gợi ý vì thứ tự hiển thị ảnh hưởng trực tiếp đến trải nghiệm người dùng.
-
-## **2.9. Kết luận** {#2.9.-kết-luận}
-
-Từ các cơ sở trên, đề tài chọn hướng tiếp cận dựa trên profile người dùng kết hợp đặc trưng bài hát. Bài toán được mô hình hóa thành bài toán hồi quy dự đoán rating/preference score, sau đó chuyển thành bài toán xếp hạng Top-N. Cách tiếp cận này phù hợp với bài toán gợi ý nhạc dựa trên thông tin cá nhân, đặc biệt trong bối cảnh dữ liệu user thực tế chưa có sẵn.
-
-# 
-
-# **CHƯƠNG 3\. PHƯƠNG PHÁP ĐỀ XUẤT** {#chương-3.-phương-pháp-đề-xuất}
-
-## **3.1. Tổng quan phương pháp** {#3.1.-tổng-quan-phương-pháp}
-
-Phương pháp đề xuất gồm các bước chính:
-
-1. Thu thập và đọc dữ liệu FMA metadata.  
-2. Tiền xử lý dữ liệu bài hát.  
-3. Trích xuất và tạo đặc trưng âm thanh.  
-4. Sinh dữ liệu hồ sơ người dùng.  
-5. Sinh dữ liệu tương tác/rating mô phỏng.  
-6. Tạo tập dữ liệu huấn luyện dạng user-track pairs.  
-7. Sử dụng hai mô hình học máy để so sánh.  
-8. Huấn luyện mô hình học máy dự đoán rating.  
-9. Đánh giá mô hình bằng metrics dự đoán rating và ranking.  
-10. Triển khai web demo để minh họa hệ thống gợi ý.
-
-## **3.2. Dữ liệu sử dụng** {#3.2.-dữ-liệu-sử-dụng}
-
-Đề tài sử dụng bộ dữ liệu FMA \- Free Music Archive. Gồm các file chính:
-
-- tracks.csv: chứa thông tin bài hát, thông tin nghệ sĩ, thông tin album.  
-- features.csv: chứa các đặc trưng âm thanh được trích xuất từ tín hiệu âm nhạc của từng bài hát  
-- genres.csv: chứa thông tin về hệ thống thể loại nhạc trong FMA  
-- echonest.csv: chứa metadata và đặc trưng bổ sung từ Echo Nest
-
-Do FMA không cung cấp đầy đủ dữ liệu cá nhân và rating người dùng, project tạo thêm dữ liệu người dùng và interaction mô phỏng.
-
-## **3.3. Tiền xử lý dữ liệu**  {#3.3.-tiền-xử-lý-dữ-liệu}
-
-Quá trình tiền xử lý được thực hiện theo các bước tuần tự nhằm chuyển đổi dữ liệu thô thành tập dữ liệu hoàn chỉnh cho hệ gợi ý.
-
-Bước 1: Thu thập và hợp nhất dữ liệu  
-Dữ liệu được lấy từ bộ dữ liệu FMA kể trên, kết hợp lại dựa trên định danh bài hát để tạo thành một bảng dữ liệu thống nhất, trong đó mỗi dòng tương ứng với một bài hát.
-
-Bước 2: Chuẩn hóa và làm sạch metadata  
-Các thuộc tính quan trọng như tiêu đề, nghệ sĩ, album, thể loại, ngôn ngữ, thời lượng và các chỉ số tương tác được chọn lọc và chuẩn hóa. Dữ liệu thể loại được chuyển từ dạng mã sang tên dễ hiểu, đồng thời phân tách giữa thể loại chính và thể loại chi tiết. Các bản ghi thiếu thông tin quan trọng được loại bỏ hoặc xử lý bằng cách điền giá trị phù hợp.
-
-Bước 3: Xử lý đặc trưng âm thanh  
-Các đặc trưng âm thanh được gom nhóm theo từng loại và tính toán các giá trị đại diện như trung bình và độ biến thiên. Cách làm này giúp giảm số chiều dữ liệu nhưng vẫn giữ được các đặc điểm quan trọng của tín hiệu âm thanh.
-
-Bước 4: Chuẩn hóa dữ liệu và xây dựng đặc trưng tổng hợp  
-Toàn bộ các đặc trưng số được đưa về cùng thang đo nhằm đảm bảo tính nhất quán. Từ đó, xây dựng các đặc trưng tổng hợp như mức năng lượng, cảm xúc, khả năng nhảy, nhịp độ tương đối và độ phổ biến. Các đặc trưng này phản ánh đặc tính nội dung và mức độ quan tâm của người dùng đối với bài hát.
-
-Bước 5: Giảm kích thước dữ liệu (nếu cần)  
-Để phục vụ mục đích thử nghiệm, tập dữ liệu có thể được giới hạn bằng cách ưu tiên các bài hát phổ biến và thuộc các tập con nhỏ hơn, giúp giảm chi phí tính toán nhưng vẫn đảm bảo tính đa dạng.
-
-Bước 6: Lưu trữ dữ liệu đầu ra  
-Sau khi hoàn tất các bước xử lý, dữ liệu bài hát được ghi trực tiếp vào cơ sở dữ liệu SQLite `data/musics.db`, bảng `songs`. Cách lưu trữ này giúp web app, bước sinh dữ liệu interaction và bước gợi ý sử dụng chung một nguồn dữ liệu thay vì phải đọc lại file CSV trung gian.
-
-## **3.4. Sinh hồ sơ người dùng và interaction** {#3.4.-sinh-hồ-sơ-người-dùng-và-interaction}
-
-Do dữ liệu FMA không cung cấp thông tin người dùng và tương tác, hệ thống tiến hành sinh dữ liệu giả lập nhằm mô phỏng hành vi nghe nhạc phục vụ huấn luyện mô hình. Quá trình này được thiết kế theo các bước sau:
-
-Bước 1: Khởi tạo hồ sơ người dùng  
-Một tập người dùng được tạo ra với các thuộc tính cơ bản như tuổi, nhóm tuổi, giới tính và ngôn ngữ ưa thích. Đồng thời, mỗi người dùng được gán một tập thể loại yêu thích và các sở thích âm nhạc dưới dạng số như mức năng lượng, cảm xúc, khả năng nhảy, nhịp độ và độ phổ biến mong muốn. Các giá trị này được sinh ngẫu nhiên nhưng có kiểm soát để đảm bảo phân phối hợp lý.
-
-Bước 2: Xác định số lượng tương tác cho mỗi người dùng  
-Số lượng bài hát mà mỗi người dùng tương tác không cố định mà được lấy theo một phân phối giảm dần. Phần lớn người dùng có ít tương tác, trong khi một tỷ lệ nhỏ có số lượng tương tác lớn, giúp mô phỏng gần hơn với dữ liệu thực tế.
-
-Bước 3: Lấy mẫu bài hát cho từng người dùng  
-Đối với mỗi người dùng, các bài hát được chọn theo chiến lược kết hợp:
-
-- Phần lớn (khoảng 70%) được lấy từ các thể loại yêu thích  
-- Phần còn lại được chọn ngẫu nhiên từ toàn bộ tập dữ liệu
-
-Cách tiếp cận này giúp tạo ra cả tương tác tích cực (phù hợp sở thích) và tương tác trung tính/tiêu cực, cần thiết cho việc học mô hình.
-
-Bước 4: Tính điểm phù hợp và sinh rating  
-Mỗi cặp người dùng \- bài hát được gán một điểm phù hợp dựa trên:
-
-- Mức độ trùng khớp thể loại và ngôn ngữ  
-- Khoảng cách giữa sở thích người dùng và đặc trưng bài hát (energy, valence, ...)  
-- Độ phổ biến của bài hát
-
-Rating được sinh theo thang điểm 1–5 với phân phối có kiểm soát, trong đó đa số rating nằm ở mức trung bình/khá nhưng vẫn có rating thấp 1–2 sao để dữ liệu cân bằng và thực tế hơn. Độ khớp giữa hồ sơ người dùng và bài hát làm rating tăng hoặc giảm, đồng thời nhiễu ngẫu nhiên được thêm vào để mô phỏng sự không chắc chắn trong hành vi nghe nhạc. Hệ thống không lưu thêm nhãn `liked` vì nhãn này có thể suy ra trực tiếp từ rating nếu cần đánh giá ranking.
-
-Bước 5: Tạo dữ liệu huấn luyện mở rộng  
- Ngoài bảng tương tác cơ bản, hệ thống xây dựng thêm một tập dữ liệu kết hợp đầy đủ thông tin người dùng, bài hát và các đặc trưng so khớp (như chênh lệch energy, valence,...). Tập dữ liệu này phục vụ cho các mô hình học có giám sát.
-
-Bước 6: Lưu trữ dữ liệu đầu ra  
-Kết quả cuối cùng được lưu vào SQLite gồm:
-
-- `interactions`: tương tác người dùng – bài hát, gồm `user_id`, `track_id`, `rating`.  
-- `training_pairs`: dữ liệu huấn luyện mở rộng, kết hợp thông tin user, song và matching features.
-
-Hồ sơ người dùng thật của web app được lưu riêng trong bảng `user_profiles` và liên kết với bảng `accounts` để phục vụ đăng nhập/đăng ký.
-
-## **3.5. Hai mô hình được đề xuất** {#3.5.-hai-mô-hình-được-đề-xuất}
-
-Đề tài lựa chọn hai mô hình học máy trên dữ liệu bảng để so sánh:
-
-- RandomForestRegressor  
-- LightGBMRegressor
-
-Cả hai mô hình đều nhận đầu vào là bộ đặc trưng kết hợp giữa người dùng, bài hát và matching features. Đầu ra là rating dự đoán.
-
-## **3.6. Mô hình RandomForestRegressor** {#3.6.-mô-hình-randomforestregressor}
-
-### ***3.6.1. Giới thiệu*** {#3.6.1.-giới-thiệu}
-
-RandomForestRegressor là mô hình học máy thuộc nhóm ensemble learning, sử dụng nhiều cây quyết định để dự đoán giá trị liên tục. Mỗi cây được huấn luyện trên một mẫu dữ liệu khác nhau, sau đó kết quả dự đoán cuối cùng là trung bình dự đoán của nhiều cây.
-
-Random Forest dựa trên kỹ thuật bagging: Bootstrap Aggregating. Tức là mô hình tạo nhiều tập con dữ liệu bằng cách lấy mẫu có hoàn lại, huấn luyện nhiều cây quyết định độc lập và kết hợp kết quả.
-
-### ***3.6.2. Cách hoạt động*** {#3.6.2.-cách-hoạt-động}
-
-Quy trình tổng quát:
-
-1. Tạo nhiều tập dữ liệu con từ tập huấn luyện ban đầu.  
-2. Huấn luyện một Decision Tree trên mỗi tập con.  
-3. Mỗi cây đưa ra một dự đoán rating.  
-4. Lấy trung bình dự đoán của tất cả cây làm kết quả cuối cùng.
-
-Công thức khái quát:
-
-y\_pred \= average(tree\_1(x), tree\_2(x), ..., tree\_n(x))
-
-### ***3.6.3. Vai trò trong bài toán gợi ý nhạc*** {#3.6.3.-vai-trò-trong-bài-toán-gợi-ý-nhạc}
-
-Trong hệ gợi ý nhạc, RandomForestRegressor có thể học quan hệ phi tuyến giữa:
-
-user profile \+ song features \+ matching features
-
-và: rating / preference score
-
-Ví dụ, mô hình có thể học rằng:
-
-- người dùng thích Electronic có xu hướng rating cao các bài Electronic,  
-- nếu energy\_diff nhỏ thì rating thường cao,  
-- nếu genre\_match \= 1 và language\_match \= 1 thì bài hát có khả năng phù hợp hơn.
-
-### ***3.6.4. Ưu điểm*** {#3.6.4.-ưu-điểm}
-
-- Dễ hiểu hơn so với nhiều mô hình boosting phức tạp.  
-- Hoạt động tốt trên dữ liệu bảng.  
-- Ít yêu cầu chuẩn hóa dữ liệu.  
-- Giảm overfitting so với một cây quyết định đơn lẻ.  
-- Có thể phân tích feature importance.  
-- Phù hợp làm baseline mạnh cho bài toán regression.
-
-### ***3.6.5. Nhược điểm*** {#3.6.5.-nhược-điểm}
-
-- Model có thể khá nặng nếu số lượng cây lớn.  
-- Dự đoán chậm hơn một số mô hình boosting tối ưu.  
-- Có thể kém chính xác hơn LightGBM trên dữ liệu bảng đã được feature engineering tốt.  
-- Khó học các pattern rất tinh vi nếu tham số chưa được tối ưu.
-
-## **3.7. Mô hình LightGBMRegressor** {#3.7.-mô-hình-lightgbmregressor}
-
-### ***3.7.1. Giới thiệu*** {#3.7.1.-giới-thiệu}
-
-LightGBMRegressor là mô hình gradient boosting do Microsoft phát triển, tối ưu cho dữ liệu bảng và dữ liệu lớn. LightGBM xây dựng nhiều cây quyết định theo cách tuần tự, trong đó mỗi cây sau tập trung sửa lỗi của các cây trước.
-
-LightGBM thuộc nhóm: Gradient Boosting Decision Trees. Khác với Random Forest, các cây trong LightGBM không độc lập hoàn toàn. Mỗi cây mới được huấn luyện dựa trên phần sai số còn lại của mô hình hiện tại.
-
-### ***3.7.2. Cách hoạt động*** {#3.7.2.-cách-hoạt-động}
-
-Quy trình tổng quát:
-
-1. Bắt đầu với một dự đoán ban đầu.  
-2. Tính sai số giữa dự đoán và rating thật.  
-3. Huấn luyện cây mới để giảm sai số đó.  
-4. Cộng cây mới vào mô hình với một hệ số learning rate.  
-5. Lặp lại nhiều vòng.
-
-Công thức khái quát:
-
-F\_m(x) \= F\_{m-1}(x) \+ learning\_rate \* tree\_m(x)
+Đầu ra của bài toán:
+
+```text
+match_score(user, song) = P(listened = 1 | user, song)
+```
 
 Trong đó:
 
-- F\_m(x) là mô hình sau vòng thứ m,  
-- tree\_m(x) là cây mới học phần lỗi còn lại,  
-- learning\_rate điều chỉnh mức đóng góp của cây mới.
+```text
+listened = 1: user đã nghe / bài phù hợp
+listened = 0: user chưa nghe / negative sample
+```
 
-### ***3.7.3. Vai trò trong bài toán gợi ý nhạc*** {#3.7.3.-vai-trò-trong-bài-toán-gợi-ý-nhạc}
+Sau khi có `match_score`, hệ thống sắp xếp các bài hát chưa nghe theo điểm giảm dần và lấy Top-N bài hát làm danh sách gợi ý.
 
-LightGBMRegressor được dùng để dự đoán rating giữa người dùng và bài hát:
+# CHƯƠNG 2. CƠ SỞ LÝ THUYẾT
 
-predicted\_rating \= model(user\_features, song\_features, matching\_features)
+## 2.1. Khái niệm hệ gợi ý
 
-Sau đó hệ thống xếp hạng các bài hát theo \`predicted\_rating\` để tạo danh sách gợi ý.
+Hệ gợi ý là hệ thống có khả năng đề xuất các đối tượng phù hợp với từng người dùng dựa trên dữ liệu đã thu thập được. Đối tượng được gợi ý có thể là phim, bài hát, sản phẩm, khóa học, bài viết hoặc video.
 
-### ***3.7.4. Ưu điểm*** {#3.7.4.-ưu-điểm}
+Trong bài toán gợi ý nhạc:
 
-- Rất mạnh trên dữ liệu bảng.  
-- Train nhanh và hiệu quả với số lượng dữ liệu lớn.  
-- Học tốt các quan hệ phi tuyến giữa đặc trưng.  
-- Có khả năng xử lý nhiều feature numeric/categorical sau khi encoding.  
-- Thường đạt kết quả tốt hơn các mô hình truyền thống nếu dữ liệu được feature engineering tốt.
+- User: người nghe nhạc.
+- Item: bài hát.
+- Interaction: hành vi giữa user và bài hát, ví dụ nghe, bỏ qua, yêu thích, thêm playlist.
 
-### ***3.7.5. Nhược điểm*** {#3.7.5.-nhược-điểm}
+Mục tiêu của hệ gợi ý không chỉ là tìm bài hát phổ biến nhất, mà là tìm bài hát phù hợp nhất với từng người dùng cụ thể.
 
-- Cần cài thêm thư viện lightgbm.  
-- Nhạy hơn với tham số so với Random Forest.  
-- Có thể overfit nếu dữ liệu nhỏ hoặc tham số không phù hợp.  
-- Khó giải thích hơn Random Forest nếu không phân tích feature importance.
+## 2.2. Vai trò của hệ gợi ý trong ứng dụng nghe nhạc
 
-## **3.8. Huấn luyện mô hình** {#3.8.-huấn-luyện-mô-hình}
+Hệ gợi ý trong ứng dụng nghe nhạc có các vai trò:
 
-Sau khi chuẩn bị dữ liệu và đặc trưng, hệ thống tiến hành huấn luyện mô hình dự đoán rating (thang điểm 1–5). Bài toán được xây dựng dưới dạng hồi quy.
+- giúp người dùng khám phá bài hát mới;
+- giảm thời gian tìm kiếm thủ công;
+- cá nhân hóa trải nghiệm nghe nhạc;
+- tăng mức độ tương tác;
+- hỗ trợ xây dựng playlist tự động;
+- giữ chân người dùng nhờ nội dung phù hợp hơn.
 
-Bước 1: Chuẩn bị dữ liệu
+Nếu không có hệ gợi ý, người dùng thường chỉ thấy bảng xếp hạng chung. Danh sách này không phản ánh đầy đủ gu âm nhạc riêng của từng người.
 
-Tập dữ liệu được chia thành: 80% huấn luyện và 20% kiểm tra
+## 2.3. Các thành phần dữ liệu
 
-Bước 2: Tiền xử lý đặc trưng
+### 2.3.1. User
 
-- Đặc trưng số được chuẩn hóa về cùng thang đo
+User được mô tả bằng thông tin cá nhân và sở thích âm thanh:
 
-- Đặc trưng phân loại được mã hóa one-hot
+| Nhóm thông tin | Thuộc tính |
+|---|---|
+| Thông tin cá nhân | age, age_group, gender |
+| Sở thích nội dung | favorite_genres, favorite_detailed_genres, language_preference |
+| Sở thích âm thanh | preferred_energy, preferred_valence, preferred_danceability, preferred_tempo, preferred_popularity |
+| Sở thích âm thanh mở rộng | preferred_acousticness, preferred_instrumentalness, preferred_liveness, preferred_speechiness |
 
-Hai bước này được tích hợp trong một pipeline để đảm bảo xử lý nhất quán giữa train và test.
+### 2.3.2. Item
 
-Bước 3: Mô hình LightGBM
+Item là bài hát. Mỗi bài hát gồm:
 
-Mô hình LightGBM sử dụng phương pháp gradient boosting trên cây quyết định, trong đó các cây được huấn luyện tuần tự để sửa lỗi của các cây trước.
+| Nhóm thông tin | Thuộc tính |
+|---|---|
+| Metadata | title, artist_name, album_title, genre_top, language_code, duration |
+| Genre chi tiết | genres_titles_text, genres_all_titles_text |
+| Audio features | energy, valence, danceability, tempo, tempo_norm |
+| Audio features mở rộng | acousticness, instrumentalness, liveness, speechiness |
+| Đặc trưng tổng hợp | duration_norm, popularity |
 
-Các tham số chính:
+### 2.3.3. Interaction
 
-- n\_estimators \= 450: số lượng cây trong mô hình. Giá trị lớn giúp mô hình học tốt hơn nhưng tăng thời gian huấn luyện và nguy cơ overfitting.  
-- learning\_rate \= 0.045: tốc độ học của mỗi cây. Giá trị nhỏ giúp mô hình học chậm nhưng ổn định hơn, thường đi kèm với số lượng cây lớn.
+Interaction là tương tác giữa user và bài hát. Trong đề tài này, interaction được biểu diễn theo implicit feedback:
 
-- num\_leaves \= 31: số lá tối đa của mỗi cây. Tham số này quyết định độ phức tạp của cây (càng lớn → mô hình càng dễ overfit).
+```text
+user_id, song_id, listened
+```
 
-- subsample \= 0.85: tỷ lệ lấy mẫu dữ liệu cho mỗi cây. Giúp giảm overfitting bằng cách không dùng toàn bộ dữ liệu mỗi lần học.
+Trong đó bảng `interactions` chỉ lưu bài user đã nghe:
 
-- colsample\_bytree \= 0.85: tỷ lệ chọn ngẫu nhiên các đặc trưng khi xây dựng mỗi cây. Giúp tăng tính đa dạng giữa các cây.
+```text
+listened = 1
+```
 
-- objective \= "regression": xác định bài toán là hồi quy.
+Để huấn luyện mô hình phân loại, bảng `training_pairs` có cả:
 
-- random\_state: đảm bảo khả năng tái lập kết quả.
+```text
+listened = 1: positive sample
+listened = 0: negative sample
+```
 
-Bước 4: Mô hình Random Forest
+## 2.4. Các hướng tiếp cận phổ biến
 
-Random Forest là mô hình bagging, trong đó nhiều cây quyết định được huấn luyện độc lập trên các mẫu dữ liệu khác nhau.
+### 2.4.1. Popularity-Based Recommendation
 
-Các tham số chính:
+Popularity-Based Recommendation đề xuất các bài hát phổ biến nhất cho tất cả người dùng.
 
-- n\_estimators \= 220: số lượng cây trong rừng. Nhiều cây giúp kết quả ổn định hơn nhưng tăng chi phí tính toán.
+Ưu điểm:
 
-- max\_depth \= 18: độ sâu tối đa của mỗi cây. Giới hạn này giúp kiểm soát overfitting.
+- dễ triển khai;
+- không cần thông tin cá nhân;
+- phù hợp khi chưa có dữ liệu user.
 
-- min\_samples\_leaf \= 3: số mẫu tối thiểu ở mỗi lá. Giá trị lớn hơn giúp mô hình mượt hơn và giảm nhiễu.
+Nhược điểm:
 
-- max\_features \= sqrt: số lượng đặc trưng được xem xét tại mỗi lần chia node (lấy căn bậc hai tổng số feature). Điều này giúp tăng tính đa dạng giữa các cây.
+- không cá nhân hóa;
+- mọi user nhận kết quả giống nhau;
+- không phản ánh gu âm nhạc riêng.
 
-- n\_jobs \= \-1: sử dụng toàn bộ CPU để tăng tốc huấn luyện.
+### 2.4.2. Content-Based Filtering
 
-- random\_state: đảm bảo kết quả có thể tái lập.
+Content-Based Filtering dựa trên đặc trưng của bài hát như genre, language, energy, valence, danceability, tempo. Hệ thống ưu tiên các bài hát có đặc trưng gần với sở thích user.
 
-Bước 5: Dự đoán và đánh giá
+Ưu điểm:
 
-Sau khi huấn luyện, mô hình dự đoán rating trên tập kiểm tra và giới hạn giá trị trong khoảng \[1, 5\].
+- phù hợp với user mới nếu user nhập sở thích ban đầu;
+- có thể giải thích dựa trên nội dung bài hát;
+- không phụ thuộc hoàn toàn vào hành vi cộng đồng.
 
-Hai nhóm chỉ số được sử dụng:
+Nhược điểm:
 
-- Sai số hồi quy: RMSE: đo độ lệch tổng thể, MAE: đo sai số trung bình tuyệt đối
+- dễ bị giới hạn trong vùng sở thích cũ;
+- chất lượng phụ thuộc vào đặc trưng item;
+- khó gợi ý bài khác gu nhưng user có thể thích.
 
-- Chỉ số xếp hạng: Precision@K, Recall@K, NDCG@K
+### 2.4.3. Collaborative Filtering
 
-Các chỉ số này được tính theo từng người dùng, dựa trên danh sách bài hát có điểm dự đoán cao nhất.
+Collaborative Filtering dựa trên hành vi của cộng đồng người dùng. Những người dùng có hành vi giống nhau có thể thích các bài hát giống nhau.
 
-## **3.9. Quy trình gợi ý Top-N** {#3.9.-quy-trình-gợi-ý-top-n}
+Ưu điểm:
 
-Sau khi có mô hình đã train, hệ thống gợi ý cho một user theo quy trình:
+- khai thác hành vi cộng đồng;
+- có thể gợi ý bài ngoài sở thích khai báo ban đầu;
+- không cần hiểu sâu nội dung bài hát.
 
-1. Lấy hồ sơ user từ bảng `user_profiles` trong SQLite.  
-2. Lấy danh sách bài hát từ bảng `songs` trong SQLite.  
-3. Loại bỏ các bài user đã tương tác trong bảng `interactions`.  
-4. Tạo feature cho từng cặp (user, track).  
-5. Dùng model dự đoán predicted\_rating.  
-6. Sắp xếp bài hát theo predicted\_rating giảm dần.  
-7. Lấy Top-N bài hát làm kết quả gợi ý.
+Nhược điểm:
 
-# 
+- khó xử lý user mới;
+- khó xử lý bài hát mới;
+- cần dữ liệu tương tác đủ lớn;
+- dữ liệu thường thưa.
 
-# **CHƯƠNG 4\. KẾT QUẢ THỰC NGHIỆM** {#chương-4.-kết-quả-thực-nghiệm}
+### 2.4.4. Profile-Based Recommendation
 
-## **4.1. Kết quả tiền xử lý dữ liệu** {#4.1.-kết-quả-tiền-xử-lý-dữ-liệu}
+Profile-Based Recommendation sử dụng hồ sơ user như tuổi, giới tính, thể loại yêu thích, ngôn ngữ yêu thích và sở thích âm thanh. Cách tiếp cận này phù hợp với đề tài vì hệ thống cần gợi ý ngay cả khi user mới chưa có nhiều lịch sử nghe.
 
-Sau khi chạy:
+## 2.5. Bài toán cold-start
 
-python preprocess\_songs.py \--song-limit 12000
+Cold-start xảy ra khi user mới hoặc bài hát mới chưa có đủ tương tác.
 
-Project tạo được:
+### 2.5.1. User cold-start
 
-12000 bài hát
+User mới chưa có lịch sử nghe. Hệ thống xử lý bằng cách yêu cầu user nhập:
 
-16 genre chính/top-level
+- tuổi;
+- giới tính;
+- ngôn ngữ nhạc yêu thích;
+- thể loại yêu thích;
+- sở thích âm thanh.
 
-134 genre chi tiết/sub-genre
+Nhờ đó user mới vẫn có thể nhận gợi ý dựa trên hồ sơ.
 
-Một số genre chính có số lượng bài hát nhiều nhất:
+### 2.5.2. Item cold-start
 
-| Genre | Số bài |
+Bài hát mới chưa có tương tác. Hệ thống xử lý bằng metadata và audio features của bài hát.
 
+## 2.6. Đặc trưng âm thanh
+
+Project sử dụng trực tiếp các đặc trưng từ `echonest.csv` thay vì tự tính bằng công thức heuristic.
+
+| Feature | Ý nghĩa |
+|---|---|
+| energy | mức độ mạnh, sôi động |
+| valence | sắc thái cảm xúc tích cực |
+| danceability | mức độ dễ nhún nhảy |
+| tempo / tempo_norm | tốc độ bài hát, đã chuẩn hóa |
+| popularity | mức độ phổ biến tổng hợp |
+| acousticness | mức độ mộc/acoustic |
+| instrumentalness | mức độ không lời |
+| liveness | cảm giác biểu diễn trực tiếp |
+| speechiness | mức độ lời/nói rõ |
+
+## 2.7. Bài toán implicit feedback
+
+Khác với explicit feedback, implicit feedback không yêu cầu user chấm điểm. Hệ thống học từ hành vi như đã nghe/chưa nghe, click, thêm playlist hoặc nghe lại.
+
+Trong đề tài này, bài toán được mô hình hóa thành phân loại nhị phân:
+
+```text
+Input: user features + song features
+Output: listened ∈ {0, 1}
+```
+
+Model dự đoán xác suất:
+
+```text
+P(listened = 1 | user, song)
+```
+
+Xác suất này được dùng làm `match_score` để xếp hạng bài hát.
+
+## 2.8. Chỉ số đánh giá
+
+### 2.8.1. Accuracy
+
+Accuracy đo tỷ lệ dự đoán đúng trên tập kiểm tra.
+
+```text
+Accuracy = số dự đoán đúng / tổng số mẫu
+```
+
+### 2.8.2. Precision
+
+Precision đo trong các bài model dự đoán là user sẽ nghe, có bao nhiêu bài đúng.
+
+```text
+Precision = TP / (TP + FP)
+```
+
+### 2.8.3. Recall
+
+Recall đo trong các bài user thực sự nghe, model tìm lại được bao nhiêu bài.
+
+```text
+Recall = TP / (TP + FN)
+```
+
+### 2.8.4. F1-score
+
+F1 là trung bình điều hòa giữa Precision và Recall.
+
+```text
+F1 = 2 * Precision * Recall / (Precision + Recall)
+```
+
+### 2.8.5. ROC-AUC
+
+ROC-AUC đo khả năng phân biệt giữa class đã nghe và chưa nghe. Giá trị càng gần 1 càng tốt.
+
+### 2.8.6. Precision@k
+
+Precision@k đo trong k bài gợi ý đầu tiên, có bao nhiêu bài thuộc nhóm phù hợp.
+
+```text
+Precision@k = số bài relevant trong Top k / k
+```
+
+### 2.8.7. Recall@k
+
+Recall@k đo trong tất cả bài relevant của user, hệ thống tìm lại được bao nhiêu bài trong Top k.
+
+```text
+Recall@k = số bài relevant trong Top k / tổng số bài relevant
+```
+
+### 2.8.8. NDCG@k
+
+NDCG@k đánh giá chất lượng thứ hạng. Bài phù hợp xuất hiện ở vị trí cao sẽ làm NDCG tăng.
+
+## 2.9. Kết luận chương
+
+Đề tài chọn hướng profile-based kết hợp content-based features và implicit feedback. Bài toán được đưa về phân loại nhị phân đã nghe/chưa nghe, sau đó dùng xác suất dự đoán để xếp hạng Top-N.
+
+# CHƯƠNG 3. PHƯƠNG PHÁP ĐỀ XUẤT
+
+## 3.1. Tổng quan phương pháp
+
+Quy trình đề xuất gồm:
+
+1. Đọc dữ liệu FMA metadata.
+2. Tiền xử lý bài hát.
+3. Lấy audio features từ Echonest.
+4. Lưu dữ liệu bài hát vào SQLite.
+5. Sinh hồ sơ user.
+6. Sinh lịch sử bài đã nghe.
+7. Sinh negative samples cho bài chưa nghe.
+8. Tạo `training_pairs` dạng user-song-label.
+9. Huấn luyện LightGBMClassifier và RandomForestClassifier.
+10. Đánh giá bằng classification metrics và ranking metrics.
+11. Triển khai web demo Flask.
+
+## 3.2. Dữ liệu sử dụng
+
+Bộ dữ liệu gốc: FMA - Free Music Archive.
+
+Các file chính:
+
+| File | Vai trò |
+|---|---|
+| tracks.csv | metadata bài hát, album, artist, genre |
+| genres.csv | cây thể loại nhạc |
+| echonest.csv | audio features như energy, valence, danceability |
+
+FMA không cung cấp đầy đủ user profile và lịch sử nghe cá nhân, nên project sinh dữ liệu mô phỏng để phục vụ huấn luyện và demo.
+
+## 3.3. Tiền xử lý dữ liệu bài hát
+
+Các bước chính:
+
+1. Đọc metadata từ `tracks.csv`.
+2. Đọc cây thể loại từ `genres.csv`.
+3. Đọc audio features từ `echonest.csv`.
+4. Chuyển genre id sang tên genre.
+5. Chuẩn hóa các cột số.
+6. Tạo `tempo_norm`, `duration_norm`, `popularity`.
+7. Lọc bỏ cột không dùng.
+8. Lưu kết quả vào bảng `songs` trong SQLite.
+
+Bảng `songs` sau xử lý giữ các cột chính:
+
+```text
+id, title, artist_name, album_title, genre_top,
+genres_titles_text, genres_all_titles_text,
+language_code, duration, duration_norm,
+acousticness, danceability, energy, instrumentalness,
+liveness, speechiness, tempo, tempo_norm, valence, popularity
+```
+
+Các cột low-level hoặc không còn dùng như `mfcc_*`, `spectral_*`, `subset`, `hotttness`, `listens`, `favorites`, `interest` không được lưu vào DB.
+
+## 3.4. Sinh hồ sơ user và interaction
+
+Do không có dữ liệu user thật, hệ thống sinh user mô phỏng.
+
+Mỗi user có:
+
+- tuổi;
+- nhóm tuổi;
+- giới tính;
+- thể loại yêu thích;
+- sub-genre yêu thích;
+- ngôn ngữ nhạc yêu thích;
+- sở thích âm thanh dạng slider 0–1.
+
+Dữ liệu interaction theo implicit feedback:
+
+- `interactions`: chỉ lưu bài user đã nghe (`listened = 1`).
+- `training_pairs`: gồm positive và negative samples.
+
+Lệnh sinh dữ liệu hiện tại:
+
+```bash
+python generate_synthetic_data.py --users 3000 --total-interactions 100000 --negative-ratio 1.0
+```
+
+Kết quả:
+
+| Thành phần | Số lượng |
 |---|---:|
+| Users | 3000 |
+| Songs | 8801 |
+| Interactions đã nghe | 100000 |
+| Training pairs | 200000 |
+| Positive samples | 100000 |
+| Negative samples | 100000 |
 
-| Electronic | 2778 |
+## 3.5. Chiến lược sinh positive/negative samples
 
-| Rock | 1831 |
+Positive samples là các bài user được xem là đã nghe. Hệ thống ưu tiên chọn bài phù hợp với user dựa trên:
 
-| Instrumental | 1053 |
+- độ tương đồng giữa sở thích âm thanh của user và audio features của bài hát;
+- độ khớp thể loại;
+- độ khớp ngôn ngữ;
+- nhiễu ngẫu nhiên để mô phỏng hành vi thực tế.
 
-| Hip-Hop | 1000 |
+Negative samples là các bài user chưa nghe, được lấy từ phần còn lại của catalog. Negative samples giúp model học ranh giới giữa bài phù hợp và bài chưa phù hợp.
 
-| Pop | 1000 |
+## 3.6. Hai mô hình được đề xuất
 
-| International | 1000 |
+Đề tài sử dụng hai mô hình học máy trên dữ liệu bảng:
 
-| Experimental | 1000 |
+| Mô hình | Vai trò |
+|---|---|
+| RandomForestClassifier | baseline mạnh, dễ hiểu, ổn định |
+| LightGBMClassifier | mô hình boosting hiệu quả, thường tốt trên dữ liệu bảng |
 
-| Folk | 1000 |
+Cả hai nhận đầu vào là user features + song features, đầu ra là xác suất `listened = 1`.
 
-| Classical | 509 |
+## 3.7. RandomForestClassifier
 
-| Old-Time / Historic | 320 |
+RandomForestClassifier là mô hình ensemble dùng nhiều cây quyết định. Mỗi cây học trên một mẫu dữ liệu khác nhau, sau đó mô hình kết hợp kết quả biểu quyết/xác suất của nhiều cây.
 
-## **4.2. Kết quả sinh dữ liệu người dùng và interaction** {#4.2.-kết-quả-sinh-dữ-liệu-người-dùng-và-interaction}
+Trong bài toán này, RandomForestClassifier học quan hệ giữa:
 
-Sau khi chạy:
+```text
+user profile + song features -> listened
+```
 
-python generate\_synthetic\_data.py \--users 1200 \--interactions-per-user 35
+Ưu điểm:
 
-Dữ liệu được sinh từ bảng `songs` trong SQLite và ghi trực tiếp vào hai bảng `interactions`, `training_pairs`. Bảng `interactions` chỉ lưu `user_id`, `track_id`, `rating`; không lưu cột `liked` vì thông tin thích/không thích có thể suy ra từ rating khi cần.
+- dễ hiểu;
+- ít yêu cầu chuẩn hóa dữ liệu;
+- ổn định;
+- phù hợp làm baseline.
 
-Ở lần thử nghiệm kiểm tra với 200 user, mỗi user 25 interaction, hệ thống tạo được:
+Nhược điểm:
 
-Số interactions: 5000
+- có thể nặng khi số cây lớn;
+- inference chậm hơn boosting;
+- kết quả hiện tại kém LightGBM.
 
-Số training pairs: 5000
+## 3.8. LightGBMClassifier
 
-Phân phối rating:
+LightGBMClassifier là mô hình gradient boosting trên cây quyết định, tối ưu cho dữ liệu bảng và dữ liệu lớn. Các cây được xây dựng tuần tự, cây sau tập trung sửa lỗi của cây trước.
 
-| Rating | Số lượng |
+Trong bài toán này, LightGBMClassifier dự đoán:
 
+```text
+match_score = P(listened = 1 | user, song)
+```
+
+Ưu điểm:
+
+- train nhanh;
+- hiệu quả trên dữ liệu bảng;
+- học tốt quan hệ phi tuyến;
+- kết quả hiện tại tốt nhất trong hai mô hình.
+
+Nhược điểm:
+
+- cần cài thư viện `lightgbm`;
+- nhạy với tham số;
+- khó giải thích hơn RandomForest nếu không phân tích feature importance.
+
+## 3.9. Huấn luyện mô hình
+
+### 3.9.1. Feature engineering
+
+Feature gồm:
+
+| Nhóm | Feature |
+|---|---|
+| User numeric | age, preferred_energy, preferred_valence, preferred_danceability, preferred_tempo, preferred_popularity, preferred_acousticness, preferred_instrumentalness, preferred_liveness, preferred_speechiness |
+| Song numeric | duration_norm, energy, valence, danceability, tempo_norm, popularity, acousticness, instrumentalness, liveness, speechiness |
+| Categorical | age_group, gender, language_preference, favorite_genres, favorite_detailed_genres, genre_top, genres_titles_text, genres_all_titles_text, language_code |
+
+Đặc trưng số được truyền trực tiếp. Đặc trưng phân loại được mã hóa One-Hot bằng `OneHotEncoder(handle_unknown="ignore")`.
+
+### 3.9.2. Train/test split
+
+Không dùng random row split toàn cục. Hệ thống dùng per-user holdout:
+
+- với mỗi user, positive samples được chia train/test;
+- negative samples được chia train/test;
+- train/test đều giữ phân phối theo từng user.
+
+Cách chia này mô phỏng sát hơn bài toán thực tế: với một user đã có một phần lịch sử nghe, hệ thống cần dự đoán các bài phù hợp còn lại.
+
+### 3.9.3. Dự đoán
+
+Model trả về xác suất class 1:
+
+```python
+predict_proba(X)[:, 1]
+```
+
+Xác suất này được gọi là `match_score`.
+
+## 3.10. Quy trình gợi ý Top-N
+
+Quy trình gợi ý cho một user:
+
+1. Lấy profile user từ bảng `user_profiles`.
+2. Lấy danh sách bài hát từ bảng `songs`.
+3. Lấy các bài user đã nghe từ `interactions`.
+4. Loại bỏ các bài đã nghe khỏi candidate set.
+5. Tạo feature cho từng cặp user-song còn lại.
+6. Dùng model dự đoán `match_score`.
+7. Sắp xếp giảm dần theo `match_score`.
+8. Lấy Top-N bài hát làm gợi ý.
+
+# CHƯƠNG 4. KẾT QUẢ THỰC NGHIỆM
+
+## 4.1. Kết quả dữ liệu
+
+Sau tiền xử lý, hệ thống có:
+
+| Thành phần | Giá trị |
+|---|---:|
+| Số bài hát | 8801 |
+| Số user mô phỏng | 3000 |
+| Số interaction đã nghe | 100000 |
+| Số training pairs | 200000 |
+
+Phân phối label trong `training_pairs`:
+
+| listened | Số lượng |
 |---:|---:|
+| 0 | 100000 |
+| 1 | 100000 |
 
-| 1 | 207 |
+Như vậy dữ liệu huấn luyện cân bằng giữa positive và negative samples.
 
-| 2 | 432 |
+## 4.2. Kết quả LightGBMClassifier
 
-| 3 | 876 |
+| Metric | Giá trị |
+|---|---:|
+| Accuracy | 0.7283 |
+| Precision | 0.7459 |
+| Recall | 0.6925 |
+| F1 | 0.7182 |
+| ROC-AUC | 0.8028 |
+| Precision@10 | 0.6597 |
+| Recall@10 | 0.7985 |
+| NDCG@10 | 0.8440 |
+| Users evaluated | 1844 |
 
-| 4 | 1246 |
+Nhận xét: LightGBMClassifier đạt ROC-AUC khoảng 0.80, cho thấy khả năng phân biệt bài đã nghe/chưa nghe tương đối tốt. NDCG@10 đạt 0.8440, thể hiện khả năng xếp hạng Top-N tốt.
 
-| 5 | 2239 |
+## 4.3. Kết quả RandomForestClassifier
 
-Phân phối mới có đủ rating thấp, trung bình và cao, giúp dữ liệu huấn luyện hợp lý hơn so với việc phần lớn rating chỉ tập trung ở mức 4–5.
+| Metric | Giá trị |
+|---|---:|
+| Accuracy | 0.6483 |
+| Precision | 0.6851 |
+| Recall | 0.5489 |
+| F1 | 0.6095 |
+| ROC-AUC | 0.7277 |
+| Precision@10 | 0.6079 |
+| Recall@10 | 0.7506 |
+| NDCG@10 | 0.7644 |
+| Users evaluated | 1844 |
 
-## **4.3. Kết quả 2 mô hình** {#4.3.-kết-quả-2-mô-hình}
+Nhận xét: RandomForestClassifier hoạt động ổn ở vai trò baseline nhưng thấp hơn LightGBMClassifier trên hầu hết chỉ số.
 
-### ***4.3.1. RandomForestRegressor***  {#4.3.1.-randomforestregressor}
+## 4.4. So sánh hai mô hình
 
-![][image1]
+| Model | F1 | ROC-AUC | Precision@10 | Recall@10 | NDCG@10 |
+|---|---:|---:|---:|---:|---:|
+| LightGBMClassifier | 0.7182 | 0.8028 | 0.6597 | 0.7985 | 0.8440 |
+| RandomForestClassifier | 0.6095 | 0.7277 | 0.6079 | 0.7506 | 0.7644 |
 
-### 
+LightGBMClassifier tốt hơn RandomForestClassifier trên:
 
-### ***4.3.2. LightGBMRegressor*** {#4.3.2.-lightgbmregressor}
+- F1;
+- ROC-AUC;
+- Precision@10;
+- Recall@10;
+- NDCG@10.
 
-![][image2]
+Do đó LightGBMClassifier phù hợp làm mô hình chính cho hệ gợi ý hiện tại, trong khi RandomForestClassifier đóng vai trò baseline để đối chiếu.
 
-## **4.4. Nhận xét kết quả** {#4.4.-nhận-xét-kết-quả}
+## 4.5. Triển khai web demo
 
-### ***4.4.1. RandomForestRegressor***  {#4.4.1.-randomforestregressor}
+Web demo Flask gồm các chức năng:
 
-RMSE \= 0.4672 và MAE \= 0.3888 cho thấy RandomForestRegressor cũng dự đoán rating tốt trên tập dữ liệu hiện tại. RMSE của RandomForestRegressor thấp hơn LightGBMRegressor một chút, nghĩa là mô hình này có lợi thế nhẹ khi xét theo sai số bình phương trung bình.
+- đăng ký/đăng nhập bằng tài khoản thật;
+- mật khẩu được hash trước khi lưu;
+- nhập hồ sơ cá nhân và sở thích âm thanh;
+- cập nhật profile bằng modal trong trang hồ sơ;
+- duyệt danh sách bài hát;
+- xem chi tiết bài hát;
+- xem danh sách bài đã nghe;
+- xem gợi ý cá nhân hóa theo `match_score`;
+- xem dashboard admin với metrics classification/ranking.
 
-Precision@10 đạt khoảng 0.9406, Recall@10 đạt khoảng 0.8144 và NDCG@10 đạt khoảng 0.9872. Các chỉ số ranking này rất gần với LightGBMRegressor, cho thấy RandomForestRegressor cũng tạo được danh sách gợi ý Top-N có chất lượng tốt.
+Các trang chính:
 
-### ***4.4.2. LightGBMRegressor*** {#4.4.2.-lightgbmregressor}
+| Route | Chức năng |
+|---|---|
+| `/login` | Đăng nhập |
+| `/register` | Đăng ký |
+| `/setup` | Nhập thông tin ban đầu |
+| `/home` | Danh sách bài hát |
+| `/recommendations` | Gợi ý cá nhân hóa |
+| `/profile` | Hồ sơ và bài đã nghe |
+| `/admin` | Dashboard dữ liệu và mô hình |
 
-RMSE \= 0.4746 và MAE \= 0.3820 cho thấy mô hình LightGBMRegressor dự đoán rating khá sát với rating mô phỏng. MAE thấp hơn RandomForestRegressor một chút, nghĩa là xét theo sai số tuyệt đối trung bình, LightGBM có kết quả tốt hơn nhẹ.
+# CHƯƠNG 5. KẾT LUẬN
 
-Precision@10 đạt khoảng 0.9417, nghĩa là trong 10 bài hát được gợi ý đầu tiên, trung bình có hơn 94% bài được xem là phù hợp. Recall@10 đạt khoảng 0.8154, cho thấy hệ thống tìm lại được phần lớn các bài hát phù hợp trong tập đánh giá. NDCG@10 đạt khoảng 0.9875, thể hiện các bài hát phù hợp thường được xếp ở vị trí cao trong danh sách gợi ý.
+## 5.1. Kết quả đạt được
 
-### ***4.4.3. So sánh 2 mô hình*** {#4.4.3.-so-sánh-2-mô-hình}
+Đề tài đã xây dựng được hệ gợi ý nhạc dựa trên thông tin cá nhân bằng cách kết hợp dữ liệu bài hát từ FMA, hồ sơ user và dữ liệu nghe nhạc mô phỏng. Hệ thống hiện dùng implicit feedback thay vì rating, phù hợp hơn với bối cảnh nghe nhạc thực tế.
 
-RandomForestRegressor có RMSE thấp hơn một chút, cho thấy mô hình này giảm được một phần sai số lớn trong dự đoán rating. Ngược lại, LightGBMRegressor có MAE thấp hơn và các chỉ số Precision@10, Recall@10, NDCG@10 cao hơn nhẹ. Điều này cho thấy LightGBMRegressor có lợi thế nhỏ về chất lượng danh sách gợi ý Top-N.
+Các kết quả chính:
 
-Nhìn chung, hai mô hình cho kết quả khá gần nhau. RandomForestRegressor phù hợp làm mô hình baseline mạnh, dễ giải thích và ổn định. LightGBMRegressor phù hợp làm mô hình chính cho hệ gợi ý vì có hiệu quả ranking nhỉnh hơn và thường có tốc độ inference tốt trên dữ liệu bảng. Trong web demo, hệ thống hiển thị lần lượt kết quả từ cả hai mô hình để người dùng dễ quan sát sự khác biệt.
+- Tiền xử lý được dữ liệu FMA metadata và Echonest audio features.
+- Lưu dữ liệu bài hát vào SQLite.
+- Xây dựng hệ đăng ký/đăng nhập thật.
+- Lưu hồ sơ user và sở thích âm thanh.
+- Sinh được 3000 user mô phỏng và 100000 interaction đã nghe.
+- Tạo được 200000 training pairs cân bằng positive/negative.
+- Chuyển bài toán từ rating regression sang binary classification.
+- Triển khai RandomForestClassifier và LightGBMClassifier.
+- Đánh giá bằng Accuracy, Precision, Recall, F1, ROC-AUC, Precision@10, Recall@10, NDCG@10.
+- Gợi ý Top-N bằng `match_score` trong khoảng 0–1.
+- Xây dựng web demo Flask hoàn chỉnh.
 
-## **4.5. Triển khai web demo** {#4.5.-triển-khai-web-demo}
+## 5.2. Hạn chế
 
-Triển khai các chức năng:
+- Dữ liệu user và interaction hiện tại vẫn là mô phỏng, chưa phải hành vi thật.
+- Negative samples được sinh nhân tạo nên chưa phản ánh đầy đủ việc user thật bỏ qua bài hát.
+- Chưa có cơ chế ghi nhận hành vi thật như click, nghe hết bài, nghe lại, skip, favorite.
+- Chưa có cơ chế cập nhật model online sau khi user sử dụng web.
+- Chưa có phần giải thích chi tiết vì sao một bài được gợi ý.
 
-- đăng ký và đăng nhập bằng tài khoản thật, mật khẩu được hash trước khi lưu,  
-- lưu tài khoản trong bảng `accounts` và hồ sơ cá nhân trong bảng `user_profiles`,  
-- nhập/cập nhật thông tin cá nhân gồm tuổi, giới tính, ngôn ngữ nhạc, thể loại yêu thích,  
-- cập nhật sở thích âm thanh bằng các thanh kéo có mô tả tiếng Việt dễ hiểu,  
-- duyệt danh sách bài hát từ bảng `songs`,  
-- xem gợi ý cá nhân hóa từ nút “Xem gợi ý cá nhân” ở trang bài hát,  
-- xem chi tiết bài hát,  
-- xem hồ sơ user và cập nhật lại thông tin bằng modal,  
-- xem dashboard admin.
+## 5.3. Hướng phát triển
 
-# **CHƯƠNG 5\. KẾT LUẬN** {#chương-5.-kết-luận}
-
-## **5.1. Kết quả đạt được** {#5.1.-kết-quả-đạt-được}
-
-Đề tài đã xây dựng được một hệ gợi ý nhạc dựa trên thông tin cá nhân bằng cách kết hợp dữ liệu bài hát từ FMA với hồ sơ người dùng và dữ liệu tương tác mô phỏng. Hệ thống sử dụng các đặc trưng về người dùng, bài hát và độ khớp giữa người dùng \- bài hát để huấn luyện mô hình dự đoán rating.
-
-Các kết quả chính đã đạt được:
-
-- Xử lý được dữ liệu FMA metadata và audio features.  
-- Tiền xử lý dữ liệu bài hát và lưu trực tiếp vào SQLite `data/musics.db`, bảng `songs`.  
-- Sinh được hồ sơ người dùng và dữ liệu interaction/rating mô phỏng.  
-- Thiết kế được bộ đặc trưng gồm user features, song features và matching features.  
-- Giới thiệu và triển khai thành công hai mô hình RandomForestRegressor và LightGBMRegressor  
-- Đánh giá mô hình bằng RMSE, MAE, Precision@10, Recall@10, NDCG@10.  
-- Xây dựng web demo Flask để minh họa hệ thống gợi ý.
-
-## **5.2. Hạn chế** {#5.2.-hạn-chế}
-
-\- Dữ liệu user và rating hiện tại là mô phỏng, chưa phải dữ liệu hành vi thực tế.
-
-\- Rating distribution đang thiên về rating cao, có thể làm metrics đẹp hơn thực tế.
-
-\- Audio features như energy, valence, danceability, tempo đang là proxy heuristic từ FMA features, chưa phải giá trị chuẩn như Spotify API.
-
-- Dữ liệu interaction/rating vẫn là dữ liệu mô phỏng, chưa phản ánh hoàn toàn hành vi người dùng thật trong môi trường triển khai thực tế.
-
-\- Chưa có cơ chế cập nhật model từ interaction thực tế sau khi user sử dụng web.
+- Thu thập interaction thật từ web app.
+- Mở rộng implicit feedback: click, play, skip, replay, favorite, add playlist.
+- Tối ưu negative sampling theo hành vi thực tế.
+- Thử các mô hình ranking chuyên biệt như LambdaMART hoặc learning-to-rank.
+- Bổ sung feature importance và giải thích gợi ý.
+- Cập nhật model định kỳ khi có thêm dữ liệu mới.

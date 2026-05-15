@@ -128,11 +128,49 @@ def classification_metrics(y_true: pd.Series, proba: np.ndarray) -> dict:
     return metrics
 
 
-def safe_train_test_split(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    labels = df[TARGET].astype(int)
-    value_counts = labels.value_counts()
-    stratify = labels if len(value_counts) >= 2 and value_counts.min() >= 2 else None
-    return train_test_split(df, test_size=0.2, random_state=RANDOM_STATE, stratify=stratify)
+def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple[pd.DataFrame, pd.DataFrame]:
+    rng = np.random.default_rng(RANDOM_STATE)
+    train_parts = []
+    test_parts = []
+
+    for _, group in df.groupby("user_id", sort=False):
+        user_train_parts = []
+        user_test_parts = []
+
+        for label in [0, 1]:
+            label_group = group[group[TARGET] == label]
+            if label_group.empty:
+                continue
+            indices = label_group.index.to_numpy()
+            rng.shuffle(indices)
+
+            if len(indices) >= 2:
+                n_test = max(1, int(round(len(indices) * test_size)))
+                n_test = min(n_test, len(indices) - 1)
+                test_idx = indices[:n_test]
+                train_idx = indices[n_test:]
+                user_test_parts.append(df.loc[test_idx])
+                user_train_parts.append(df.loc[train_idx])
+            else:
+                user_train_parts.append(label_group)
+
+        if user_train_parts:
+            train_parts.append(pd.concat(user_train_parts, ignore_index=False))
+        if user_test_parts:
+            test_parts.append(pd.concat(user_test_parts, ignore_index=False))
+
+    if not train_parts or not test_parts:
+        labels = df[TARGET].astype(int)
+        value_counts = labels.value_counts()
+        stratify = labels if len(value_counts) >= 2 and value_counts.min() >= 2 else None
+        return train_test_split(df, test_size=test_size, random_state=RANDOM_STATE, stratify=stratify)
+
+    train_df = pd.concat(train_parts, ignore_index=True).sample(frac=1, random_state=RANDOM_STATE).reset_index(drop=True)
+    test_df = pd.concat(test_parts, ignore_index=True).sample(frac=1, random_state=RANDOM_STATE).reset_index(drop=True)
+    return train_df, test_df
+
+
+safe_train_test_split = userwise_train_test_split
 
 
 def prepare_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], list[str]]:
