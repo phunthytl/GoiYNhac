@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Admin dashboard</h1>
+
+<div class="metrics-grid">
+  <div><strong>{{ stats.users }}</strong><span>Users</span></div>
+  <div><strong>{{ stats.songs }}</strong><span>Songs</span></div>
+  <div><strong>{{ stats.interactions }}</strong><span>Interactions</span></div>
+  <div><strong>{{ stats.genres }}</strong><span>Genres</span></div>
+  <div><strong>{{ stats.listened }}</strong><span>Đã nghe</span></div>
+</div>
+
+<div class="panel">
+  <div class="section-title-row compact-title-row">
+    <h2>So sánh mô hình</h2>
+    <button type="button" class="btn small-btn" id="metric-help-open">Xem giải thích</button>
+  </div>
+  {% if model_metrics %}
+    {% if best_model %}
+      <p class="muted">Mô hình tốt nhất theo F1 hiện tại: <strong>{{ best_model.model }}</strong>.</p>
+    {% endif %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Accuracy</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1</th>
+            <th>AUC</th>
+            <th>Precision@10</th>
+            <th>Recall@10</th>
+            <th>NDCG@10</th>
+            <th>Users</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for metrics in model_metrics %}
+            <tr>
+              <td>{{ metrics.model }}</td>
+              <td>{{ '%.4f'|format(metrics.accuracy) }}</td>
+              <td>{{ '%.4f'|format(metrics.precision) }}</td>
+              <td>{{ '%.4f'|format(metrics.recall) }}</td>
+              <td>{{ '%.4f'|format(metrics.f1) }}</td>
+              <td>{{ '%.4f'|format(metrics.roc_auc) }}</td>
+              <td>{{ '%.4f'|format(metrics.precision_at_10) }}</td>
+              <td>{{ '%.4f'|format(metrics.recall_at_10) }}</td>
+              <td>{{ '%.4f'|format(metrics.ndcg_at_10) }}</td>
+              <td>{{ metrics.users_evaluated }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>Chưa có metrics.</p>
+  {% endif %}
+</div>
+
+<div class="modal-backdrop" id="metric-help-modal" hidden>
+  <div class="modal-card audio-help-card">
+    <div class="modal-head">
+      <div>
+        <h2>Giải thích chỉ số đánh giá</h2>
+        <p class="muted">Các chỉ số dùng để đánh giá phân loại đã nghe/chưa nghe và chất lượng xếp hạng Top-N.</p>
+      </div>
+      <button type="button" class="modal-close" id="metric-help-close">×</button>
+    </div>
+    <div class="explain-grid">
+      {% for name, desc in metric_explanations.items() %}
+        <div>
+          <strong>{{ name }}</strong>
+          <p>{{ desc }}</p>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" id="metric-help-ok">Đã hiểu</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Thống kê genre cha</h2>
+  <p class="muted">Hiển thị đầy đủ các genre chính/top-level đang có trong dữ liệu đã xử lý.</p>
+  {% set max_count = top_genres.values()|list|max %}
+  {% for genre, count in top_genres.items() %}
+    <div class="bar-row"><span>{{ genre }}</span><div><i style="width: {{ (count / max_count * 100)|round(2) }}%"></i></div><b>{{ count }}</b></div>
+  {% endfor %}
+</div>
+
+<script>
+const metricHelpModal = document.getElementById('metric-help-modal');
+document.getElementById('metric-help-open').addEventListener('click', () => { metricHelpModal.hidden = false; });
+document.getElementById('metric-help-close').addEventListener('click', () => { metricHelpModal.hidden = true; });
+document.getElementById('metric-help-ok').addEventListener('click', () => { metricHelpModal.hidden = true; });
+metricHelpModal.addEventListener('click', (event) => { if (event.target === metricHelpModal) metricHelpModal.hidden = true; });
+</script>
+{% endblock %}

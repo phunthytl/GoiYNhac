@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Hồ sơ user{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Hồ sơ User #{{ user.user_id }}</h1>
+    <p>Tài khoản {{ session.get('username') }} · quản lý thông tin dùng để cá nhân hóa gợi ý.</p>
+  </div>
+  <button class="primary" type="button" id="profile-edit-open">Cập nhật lại thông tin</button>
+</div>
+
+<div class="profile-grid">
+  <div class="panel">
+    <h2>Thông tin cá nhân</h2>
+    <p>Tuổi: <strong>{{ user.age }}</strong></p>
+    <p>Nhóm tuổi: <strong>{{ user.age_group }}</strong></p>
+    <p>Giới tính: <strong>{{ user.gender }}</strong></p>
+    <p>Ngôn ngữ thích: <strong>{{ user.language_preference|language_name }}</strong></p>
+    <p>Thể loại thích: <strong>{{ user.favorite_genres }}</strong></p>
+    {% if user.favorite_detailed_genres %}
+      <p>Thể loại chi tiết: <strong>{{ user.favorite_detailed_genres }}</strong></p>
+    {% endif %}
+  </div>
+  <div class="panel">
+    <h2>Sở thích âm thanh</h2>
+    <div class="metrics-grid compact">
+      <div><strong>{{ '%.2f'|format(user.preferred_energy) }}</strong><span>Mạnh / sôi động</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_valence) }}</strong><span>Cảm xúc tích cực</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_danceability) }}</strong><span>Dễ nhún nhảy</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_tempo) }}</strong><span>Tốc độ</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_popularity) }}</strong><span>Độ phổ biến</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_acousticness|default(0.5)) }}</strong><span>Acoustic</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_instrumentalness|default(0.5)) }}</strong><span>Không lời</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_liveness|default(0.5)) }}</strong><span>Live</span></div>
+      <div><strong>{{ '%.2f'|format(user.preferred_speechiness|default(0.5)) }}</strong><span>Lời/nói</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Danh sách bài hát đã nghe</h2>
+  <table>
+    <thead><tr><th>Track</th><th>Artist</th><th>Genre</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+      {% for h in history %}
+        <tr>
+          <td><a href="{{ url_for('song_detail', song_id=h.song_id) }}">{{ h.title }}</a></td>
+          <td>{{ h.artist_name }}</td>
+          <td>{{ h.genre_top }}</td>
+          <td>Đã nghe</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-backdrop" id="profile-edit-modal" hidden>
+  <div class="modal-card profile-edit-card">
+    <div class="modal-head">
+      <div>
+        <h2>Cập nhật thông tin cá nhân</h2>
+        <p class="muted">Thông tin mới sẽ được dùng cho các lần gợi ý tiếp theo.</p>
+      </div>
+      <button type="button" class="modal-close" id="profile-edit-close">×</button>
+    </div>
+
+    <form method="post" action="{{ url_for('setup') }}" class="profile-edit-form">
+      <div class="form-grid">
+        <label>
+          Tuổi
+          <input type="number" name="age" min="10" max="90" value="{{ user.age|int }}" required>
+        </label>
+
+        <label>
+          Giới tính
+          <select name="gender">
+            {% for g in ['Male', 'Female', 'Other'] %}
+              <option value="{{ g }}" {% if user.gender == g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          Ngôn ngữ nhạc ưa thích
+          <select name="language_preference">
+            {% for code, label in languages %}
+              <option value="{{ code }}" {% if user.language_preference == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <h3>Thể loại yêu thích</h3>
+      <p class="muted">Chọn thể loại bạn thường muốn nghe.</p>
+      <div class="checkbox-grid profile-genre-grid">
+        {% for g in main_genres %}
+          <label class="check-card">
+            <input type="checkbox" name="favorite_genres" value="{{ g }}" {% if g in selected_genres %}checked{% endif %}>
+            <span>{{ g }}</span>
+          </label>
+        {% endfor %}
+      </div>
+
+      <h3>Sở thích âm thanh</h3>
+      <div class="audio-slider-list compact-audio-list">
+        <label class="audio-slider-card">
+          <span>Mức độ mạnh, sôi động của bài nhạc mà bạn yêu thích</span>
+          <p>Giá trị thấp thường nhẹ/êm; giá trị cao thường mạnh, dồn dập, nhiều năng lượng.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_energy" min="0" max="1" step="0.01" value="{{ user.preferred_energy }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_energy|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Sắc thái cảm xúc tích cực của bài nhạc mà bạn yêu thích</span>
+          <p>Giá trị thấp thường buồn/tối/căng; giá trị cao thường vui/tươi/sáng.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_valence" min="0" max="1" step="0.01" value="{{ user.preferred_valence }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_valence|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ dễ nhún nhảy theo nhịp mà bạn yêu thích</span>
+          <p>Giá trị thấp thường ít bắt beat/chậm; giá trị cao thường nhịp rõ, đều và dễ nhún nhảy.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_danceability" min="0" max="1" step="0.01" value="{{ user.preferred_danceability }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_danceability|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Tốc độ cảm nhận của bài nhạc mà bạn yêu thích</span>
+          <p>Giá trị thấp hợp nhạc chậm/thư giãn; giá trị cao hợp nhạc nhanh/sôi động.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_tempo" min="0" max="1" step="0.01" value="{{ user.preferred_tempo }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_tempo|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ ưu tiên bài hát phổ biến</span>
+          <p>Giá trị thấp giúp khám phá bài ít nổi; giá trị cao ưu tiên bài có lượt nghe/yêu thích cao hơn.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_popularity" min="0" max="1" step="0.01" value="{{ user.preferred_popularity }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_popularity|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ thích nhạc mộc / acoustic</span>
+          <p>Giá trị thấp hợp nhạc điện tử/dày âm; giá trị cao ưu tiên âm thanh mộc, ít xử lý.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_acousticness" min="0" max="1" step="0.01" value="{{ user.preferred_acousticness|default(0.5) }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_acousticness|default(0.5)|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ thích nhạc không lời / ít giọng hát</span>
+          <p>Giá trị thấp ưu tiên bài có giọng hát rõ; giá trị cao ưu tiên nhạc không lời hoặc ít vocal.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_instrumentalness" min="0" max="1" step="0.01" value="{{ user.preferred_instrumentalness|default(0.5) }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_instrumentalness|default(0.5)|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ thích cảm giác biểu diễn trực tiếp</span>
+          <p>Giá trị thấp hợp bản thu studio; giá trị cao ưu tiên cảm giác live, sân khấu, khán giả.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_liveness" min="0" max="1" step="0.01" value="{{ user.preferred_liveness|default(0.5) }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_liveness|default(0.5)|float) }}</b></div>
+        </label>
+        <label class="audio-slider-card">
+          <span>Mức độ thích phần lời/nói rõ</span>
+          <p>Giá trị thấp hợp nhạc ít lời; giá trị cao ưu tiên bài có nhiều lời, rap hoặc spoken word.</p>
+          <div class="range-row"><small>0</small><input type="range" name="preferred_speechiness" min="0" max="1" step="0.01" value="{{ user.preferred_speechiness|default(0.5) }}"><small>1</small><b class="range-value">{{ '%.2f'|format(user.preferred_speechiness|default(0.5)|float) }}</b></div>
+        </label>
+      </div>
+
+      <div class="actions setup-actions">
+        <button type="button" id="profile-edit-cancel">Hủy</button>
+        <button class="primary" type="submit">Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const profileModal = document.getElementById('profile-edit-modal');
+document.getElementById('profile-edit-open').addEventListener('click', () => { profileModal.hidden = false; });
+document.getElementById('profile-edit-close').addEventListener('click', () => { profileModal.hidden = true; });
+document.getElementById('profile-edit-cancel').addEventListener('click', () => { profileModal.hidden = true; });
+profileModal.addEventListener('click', (event) => { if (event.target === profileModal) profileModal.hidden = true; });
+
+document.querySelectorAll('.audio-slider-card input[type="range"]').forEach(input => {
+  const valueEl = input.closest('.audio-slider-card').querySelector('.range-value');
+  const syncValue = () => { valueEl.textContent = Number(input.value).toFixed(2); };
+  input.addEventListener('input', syncValue);
+  syncValue();
+});
+</script>
+{% endblock %}

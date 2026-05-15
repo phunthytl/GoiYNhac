@@ -1,0 +1,58 @@
+{
+  "model": "RandomForestClassifier",
+  "target": "listened",
+  "rows": 200000,
+  "train_size": 160000,
+  "test_size": 40000,
+  "accuracy": 0.64925,
+  "precision": 0.6890916001520334,
+  "recall": 0.5439,
+  "f1": 0.6079472419381882,
+  "roc_auc": 0.72676990375,
+  "precision_at_10": 0.610632183908046,
+  "recall_at_10": 0.7297551325533461,
+  "ndcg_at_10": 0.7571875101587852,
+  "users_evaluated": 1740,
+  "features": {
+    "numeric": [
+      "age",
+      "preferred_energy",
+      "preferred_valence",
+      "preferred_danceability",
+      "preferred_tempo",
+      "preferred_popularity",
+      "preferred_acousticness",
+      "preferred_instrumentalness",
+      "preferred_liveness",
+      "preferred_speechiness",
+      "duration_norm",
+      "energy",
+      "valence",
+      "danceability",
+      "tempo_norm",
+      "popularity",
+      "acousticness",
+      "instrumentalness",
+      "liveness",
+      "speechiness"
+    ],
+    "categorical": [
+      "age_group",
+      "gender",
+      "language_preference",
+      "favorite_genres",
+      "favorite_detailed_genres",
+      "genre_top",
+      "genres_titles_text",
+      "genres_all_titles_text",
+      "language_code"
+    ]
+  },
+  "params": {
+    "n_estimators": 260,
+    "max_depth": 20,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt",
+    "random_state": 42
+  }
+}

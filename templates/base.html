@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hệ gợi ý nhạc{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav class="topbar">
+    <a class="brand" href="{{ url_for('home') }}">MusicReco</a>
+    <div class="nav-links">
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('home') }}">Bài hát</a>
+        <a href="{{ url_for('profile') }}">Hồ sơ: {{ session.get('username') }}</a>
+        <a href="{{ url_for('logout') }}">Đăng xuất</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">Đăng nhập</a>
+        <a href="{{ url_for('register') }}">Đăng ký</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for message in messages %}<div>{{ message }}</div>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "model": "LightGBMClassifier",
+  "target": "listened",
+  "rows": 200000,
+  "train_size": 160000,
+  "test_size": 40000,
+  "accuracy": 0.725475,
+  "precision": 0.74480212800608,
+  "recall": 0.686,
+  "f1": 0.7141927591681633,
+  "roc_auc": 0.7998908225,
+  "precision_at_10": 0.6620114942528736,
+  "recall_at_10": 0.7780790817830082,
+  "ndcg_at_10": 0.8344002766374092,
+  "users_evaluated": 1740,
+  "features": {
+    "numeric": [
+      "age",
+      "preferred_energy",
+      "preferred_valence",
+      "preferred_danceability",
+      "preferred_tempo",
+      "preferred_popularity",
+      "preferred_acousticness",
+      "preferred_instrumentalness",
+      "preferred_liveness",
+      "preferred_speechiness",
+      "duration_norm",
+      "energy",
+      "valence",
+      "danceability",
+      "tempo_norm",
+      "popularity",
+      "acousticness",
+      "instrumentalness",
+      "liveness",
+      "speechiness"
+    ],
+    "categorical": [
+      "age_group",
+      "gender",
+      "language_preference",
+      "favorite_genres",
+      "favorite_detailed_genres",
+      "genre_top",
+      "genres_titles_text",
+      "genres_all_titles_text",
+      "language_code"
+    ]
+  }
+}

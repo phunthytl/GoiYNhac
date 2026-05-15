@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ song.title }}{% endblock %}
+{% block content %}
+<div class="detail-layout">
+  <div class="big-cover">♪</div>
+  <div class="detail-info">
+    <h1>{{ song.title }}</h1>
+    <p class="artist">{{ song.artist_name }}</p>
+    <p>{{ song.album_title }}</p>
+    <div class="meta-list">
+      <span>Genre chính: {{ song.genre_top }}</span>
+      <span>Ngôn ngữ: {{ song.language_code|language_name }}</span>
+      <span>Duration: {{ song.duration|int }}s</span>
+      <span>Popularity: {{ '%.3f'|format(song.popularity) }}</span>
+    </div>
+    <div class="genre-detail-box">
+      <strong>Genre trực tiếp:</strong>
+      <span>{{ song.genres_titles_text if song.genres_titles_text else 'Không có' }}</span>
+      <strong>Genre đầy đủ:</strong>
+      <span>{{ song.genres_all_titles_text if song.genres_all_titles_text else 'Không có' }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Audio features</h2>
+  <div class="metrics-grid">
+    <div><strong>{{ '%.3f'|format(song.energy) }}</strong><span>Energy</span></div>
+    <div><strong>{{ '%.3f'|format(song.valence) }}</strong><span>Valence</span></div>
+    <div><strong>{{ '%.3f'|format(song.danceability) }}</strong><span>Danceability</span></div>
+    <div><strong>{{ '%.3f'|format(song.tempo_norm) }}</strong><span>Tempo chuẩn hóa</span></div>
+    <div><strong>{{ '%.3f'|format(song.popularity) }}</strong><span>Popularity</span></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Lịch sử user với bài này</h2>
+  {% if interactions %}
+    {% for item in interactions %}
+      <p><strong>User đã nghe bài này.</strong></p>
+    {% endfor %}
+  {% else %}
+    <p class="muted">User hiện tại chưa có interaction với bài này.</p>
+  {% endif %}
+</div>
+{% endblock %}

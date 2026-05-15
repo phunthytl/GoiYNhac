@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Danh sách bài hát{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Danh sách bài hát</h1>
+    <p>User #{{ user.user_id }} · {{ user.favorite_genres }}</p>
+  </div>
+  <a class="btn primary" href="{{ url_for('recommendations') }}">Xem gợi ý cá nhân</a>
+</div>
+
+<form class="filters" method="get">
+  <input type="text" name="q" placeholder="Tìm title / artist / album" value="{{ q }}">
+  <select name="genre">
+    <option value="">Tất cả thể loại</option>
+    {% for g in genres %}
+      <option value="{{ g }}" {% if g == genre %}selected{% endif %}>{{ g }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Lọc</button>
+</form>
+
+<p class="muted">Tổng: {{ total }} bài hát</p>
+
+<div class="song-grid">
+  {% for s in songs %}
+    <a class="song-card" href="{{ url_for('song_detail', song_id=s.id) }}">
+      <div class="cover">♪</div>
+      <div class="song-info">
+        <strong>{{ s.title }}</strong>
+        <span>{{ s.artist_name }}</span>
+        <small>{{ s.genre_top }} · popularity {{ '%.3f'|format(s.popularity) }}</small>
+      </div>
+    </a>
+  {% endfor %}
+</div>
+
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="{{ url_for('home', q=q, genre=genre, page=1) }}">Đầu</a>
+    <a href="{{ url_for('home', q=q, genre=genre, page=page-1) }}">Trước</a>
+  {% endif %}
+  <span>Trang {{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+    <a href="{{ url_for('home', q=q, genre=genre, page=page+1) }}">Sau</a>
+    <a href="{{ url_for('home', q=q, genre=genre, page=total_pages) }}">Cuối</a>
+  {% endif %}
+</div>
+{% endblock %}

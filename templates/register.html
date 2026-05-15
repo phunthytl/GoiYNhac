@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Đăng ký{% endblock %}
+{% block content %}
+<section class="auth-shell">
+  <div class="auth-hero-card">
+    <span class="eyebrow">Bắt đầu nhanh</span>
+    <h1>Tạo hồ sơ nghe nhạc riêng</h1>
+    <p>Sau khi đăng ký, bạn sẽ nhập tuổi, giới tính, thể loại yêu thích và các chỉ số âm thanh để cá nhân hóa model gợi ý.</p>
+    <div class="auth-benefits">
+      <div><strong>✓</strong><span>Tài khoản riêng</span></div>
+      <div><strong>✓</strong><span>Hồ sơ cá nhân</span></div>
+      <div><strong>✓</strong><span>Gợi ý theo lịch sử nghe</span></div>
+    </div>
+  </div>
+
+  <div class="auth-card">
+    <div class="auth-card-head">
+      <span class="auth-icon">+</span>
+      <div>
+        <h2>Đăng ký</h2>
+        <p>Tạo tài khoản để lưu hồ sơ gợi ý.</p>
+      </div>
+    </div>
+
+    <form method="post" class="auth-form">
+      <label>
+        <span>Tên đăng nhập</span>
+        <input type="text" name="username" value="{{ username or '' }}" autocomplete="username" placeholder="vd: vanphu" required autofocus>
+      </label>
+
+      <label>
+        <span>Mật khẩu</span>
+        <input type="password" name="password" autocomplete="new-password" minlength="6" placeholder="Ít nhất 6 ký tự" required>
+      </label>
+
+      <label>
+        <span>Xác nhận mật khẩu</span>
+        <input type="password" name="confirm_password" autocomplete="new-password" minlength="6" placeholder="Nhập lại mật khẩu" required>
+      </label>
+
+      <button class="primary auth-submit" type="submit">Tạo tài khoản</button>
+    </form>
+
+    <div class="auth-switch">
+      Đã có tài khoản?
+      <a class="link" href="{{ url_for('login') }}">Đăng nhập</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

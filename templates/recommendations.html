@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Gợi ý cá nhân{% endblock %}
+{% block content %}
+<div class="page-head profile-head">
+  <div>
+    <h1>Gợi ý dành cho User #{{ user.user_id }}</h1>
+    <p>{{ user.age }} tuổi · {{ user.gender }} · {{ user.age_group }}</p>
+  </div>
+</div>
+
+<div class="panel user-profile-summary">
+  <p><strong>Thể loại yêu thích:</strong> {{ user.favorite_genres }}</p>
+  {% if user.favorite_detailed_genres %}
+    <p><strong>Sub-genre yêu thích:</strong> {{ user.favorite_detailed_genres }}</p>
+  {% endif %}
+  <p><strong>Ngôn ngữ yêu thích:</strong> {{ user.language_preference|language_name }}</p>
+  <div class="audio-pref-grid">
+    <div><span>Energy</span><b>{{ '%.2f'|format(user.preferred_energy) }}</b></div>
+    <div><span>Valence</span><b>{{ '%.2f'|format(user.preferred_valence) }}</b></div>
+    <div><span>Danceability</span><b>{{ '%.2f'|format(user.preferred_danceability) }}</b></div>
+    <div><span>Tempo</span><b>{{ '%.2f'|format(user.preferred_tempo) }}</b></div>
+    <div><span>Popularity</span><b>{{ '%.2f'|format(user.preferred_popularity) }}</b></div>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <select name="top_k">
+    {% for n in [10, 15, 20] %}
+      <option value="{{ n }}" {% if n == top_k %}selected{% endif %}>Top {{ n }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Cập nhật</button>
+</form>
+
+<section class="model-rec-section panel">
+  <div class="section-title-row compact-title-row">
+    <div>
+      <h2>LightGBMClassifier</h2>
+      <p class="muted">Danh sách gợi ý từ mô hình LightGBM.</p>
+    </div>
+  </div>
+  <div class="rec-grid">
+    {% for s in lightgbm_recs %}
+      <a class="rec-card" href="{{ url_for('song_detail', song_id=s.id) }}">
+        <div class="score">{{ '%.2f'|format(s.match_score) }}</div>
+        <h3>{{ s.title }}</h3>
+        <p>{{ s.artist_name }}</p>
+        <small>{{ s.genre_top }} · energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }}</small>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="model-rec-section panel">
+  <div class="section-title-row compact-title-row">
+    <div>
+      <h2>RandomForestClassifier</h2>
+      <p class="muted">Danh sách gợi ý từ mô hình Random Forest.</p>
+    </div>
+  </div>
+  <div class="rec-grid">
+    {% for s in random_forest_recs %}
+      <a class="rec-card rf-card" href="{{ url_for('song_detail', song_id=s.id) }}">
+        <div class="score rf-score">{{ '%.2f'|format(s.match_score) }}</div>
+        <h3>{{ s.title }}</h3>
+        <p>{{ s.artist_name }}</p>
+        <small>{{ s.genre_top }} · energy {{ '%.2f'|format(s.energy) }} · valence {{ '%.2f'|format(s.valence) }}</small>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
