@@ -49,7 +49,6 @@ def cosine_score(user_values: np.ndarray, song_values: np.ndarray) -> float:
     score = float(np.dot(user_values, song_values) / (user_norm * song_norm))
     return float(np.clip(score, 0, 1))
 
-
 def validate_songs_columns(songs: pd.DataFrame) -> None:
     required_cols = [
         "id",
@@ -193,6 +192,8 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
         dtype=float,
     )
     return cosine_score(user_values, song_values)
+
+
 
 
 def listen_affinity_score(user: pd.Series, song: pd.Series, rng: np.random.Generator) -> float:

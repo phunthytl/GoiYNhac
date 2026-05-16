@@ -32,6 +32,7 @@ def train():
     X_test = test_df[features]
     y_test = test_df[TARGET]
 
+    # Tiền xử lý tương tự LightGBM
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", "passthrough", numeric_features),
@@ -40,14 +41,15 @@ def train():
         remainder="drop",
     )
 
+    # Cấu hình mô hình Random Forest (Rừng ngẫu nhiên)
     model = RandomForestClassifier(
-        n_estimators=260,
-        max_depth=20,
-        min_samples_leaf=2,
-        max_features="sqrt",
-        n_jobs=-1,
+        n_estimators=260,          # Số lượng cây trong rừng
+        max_depth=20,             # Độ sâu tối đa của cây
+        min_samples_leaf=2,       # Số mẫu tối thiểu ở mỗi lá
+        max_features="sqrt",      # Số đặc trưng tối đa khi chia nhánh
+        n_jobs=-1,                # Dùng toàn bộ nhân CPU để chạy nhanh hơn
         random_state=RANDOM_STATE,
-        class_weight="balanced_subsample",
+        class_weight="balanced_subsample", # Cân bằng trọng số các lớp dữ liệu
     )
 
     pipeline = Pipeline([

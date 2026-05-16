@@ -511,9 +511,9 @@ def create_profile_for_account(account_id: int) -> int:
             INSERT INTO user_profiles (
                 account_id, age, age_group, gender, favorite_genres, language_preference,
                 preferred_energy, preferred_valence, preferred_danceability, preferred_tempo,
-                preferred_popularity, preferred_acousticness, preferred_instrumentalness,
+                preferred_acousticness, preferred_instrumentalness,
                 preferred_liveness, preferred_speechiness, favorite_detailed_genres
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 account_id,

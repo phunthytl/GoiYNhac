@@ -29,6 +29,7 @@ except ImportError as exc:
     ) from exc
 
 
+# Danh sách các đặc trưng dạng số
 NUMERIC_FEATURES = [
     "preference_similarity",
     "genre_match_score",
@@ -42,17 +43,18 @@ NUMERIC_FEATURES = [
     "preferred_instrumentalness",
     "preferred_liveness",
     "preferred_speechiness",
-    "duration_norm",
-    "energy",
-    "valence",
-    "danceability",
-    "tempo_norm",
-    "acousticness",
-    "instrumentalness",
-    "liveness",
-    "speechiness",
+    "duration_norm",       
+    "energy",             
+    "valence",                 
+    "danceability",           
+    "tempo_norm",            
+    "acousticness",           
+    "instrumentalness", 
+    "liveness",                
+    "speechiness",             
 ]
 
+# Danh sách các đặc trưng dạng chữ
 CATEGORICAL_FEATURES = [
     "age_group",
     "gender",
@@ -65,6 +67,7 @@ CATEGORICAL_FEATURES = [
     "language_code",
 ]
 
+# Kiểm tra xem dữ liệu có đủ các cột bắt buộc không
 REQUIRED_FEATURES = [
     "preferred_energy",
     "preferred_valence",
@@ -80,12 +83,13 @@ REQUIRED_FEATURES = [
     "tempo_norm",
 ]
 
-
+# Tính toán độ chính xác và độ phủ ở top k
 def precision_recall_ndcg_at_k(df: pd.DataFrame, k: int = 10) -> dict:
     precisions = []
     recalls = []
     ndcgs = []
 
+    # Lấy từng nhóm dữ liệu của từng người dùng
     for _, group in df.groupby("user_id"):
         if len(group) < k:
             continue
@@ -93,6 +97,7 @@ def precision_recall_ndcg_at_k(df: pd.DataFrame, k: int = 10) -> dict:
         if relevant_total == 0:
             continue
 
+        # Lấy top k bài hát được đề xuất
         top = group.sort_values("pred", ascending=False).head(k)
         rel = (top[TARGET] == 1).astype(int).to_numpy()
         precisions.append(rel.sum() / k)
@@ -112,6 +117,7 @@ def precision_recall_ndcg_at_k(df: pd.DataFrame, k: int = 10) -> dict:
     }
 
 
+# Tính toán các chỉ số đánh giá khác
 def classification_metrics(y_true: pd.Series, proba: np.ndarray) -> dict:
     pred_label = (proba >= 0.5).astype(int)
     metrics = {
@@ -126,7 +132,7 @@ def classification_metrics(y_true: pd.Series, proba: np.ndarray) -> dict:
         metrics["roc_auc"] = 0.0
     return metrics
 
-
+# Xử lý dữ liệu (Loại bỏ NaN, ép kiểu, xử lý text, chia train/test)
 def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(RANDOM_STATE)
     train_parts = []
@@ -135,7 +141,7 @@ def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple
     for _, group in df.groupby("user_id", sort=False):
         user_train_parts = []
         user_test_parts = []
-
+        # Lấy dữ liệu của từng người dùng
         for label in [0, 1]:
             label_group = group[group[TARGET] == label]
             if label_group.empty:
@@ -143,6 +149,7 @@ def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple
             indices = label_group.index.to_numpy()
             rng.shuffle(indices)
 
+            # Chia dữ liệu của từng người dùng thành tập train và test
             if len(indices) >= 2:
                 n_test = max(1, int(round(len(indices) * test_size)))
                 n_test = min(n_test, len(indices) - 1)
@@ -153,11 +160,13 @@ def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple
             else:
                 user_train_parts.append(label_group)
 
+        # Ghép lại dữ liệu của từng người dùng
         if user_train_parts:
             train_parts.append(pd.concat(user_train_parts, ignore_index=False))
         if user_test_parts:
             test_parts.append(pd.concat(user_test_parts, ignore_index=False))
 
+    # Nếu không có dữ liệu cho train hoặc test, sử dụng train_test_split thông thường
     if not train_parts or not test_parts:
         labels = df[TARGET].astype(int)
         value_counts = labels.value_counts()
@@ -169,35 +178,33 @@ def userwise_train_test_split(df: pd.DataFrame, test_size: float = 0.2) -> tuple
     return train_df, test_df
 
 
+
+
 safe_train_test_split = userwise_train_test_split
 
 
 def prepare_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], list[str]]:
+    """
+    Hàm tiền xử lý dữ liệu trước khi đưa vào huấn luyện.
+    Nhiệm vụ: Kiểm tra cột, xử lý giá trị thiếu (NaN), ép kiểu dữ liệu.
+    """
     if df.empty:
         raise ValueError("Bảng training_pairs đang rỗng. Hãy chạy generate_synthetic_data.py trước.")
-    if TARGET not in df.columns:
-        raise ValueError(f"Không tìm thấy target column: {TARGET}")
-
-    missing_core = [col for col in REQUIRED_FEATURES if col not in df.columns]
-    if missing_core:
-        raise ValueError(
-            "training_pairs thiếu cột quan trọng: "
-            + ", ".join(missing_core)
-            + "\nHãy chạy lại preprocess_songs.py và generate_synthetic_data.py."
-        )
-
+    
+    # Loại bỏ các dòng không có nhãn (target) và ép kiểu target về 0 hoặc 1
     out = df.dropna(subset=[TARGET]).copy()
     out[TARGET] = pd.to_numeric(out[TARGET], errors="coerce").fillna(0).astype(int).clip(0, 1)
+
+    # Lọc lấy danh sách các đặc trưng thực tế có trong dataframe
     numeric_features = [col for col in NUMERIC_FEATURES if col in out.columns]
     categorical_features = [col for col in CATEGORICAL_FEATURES if col in out.columns]
 
-    if not numeric_features and not categorical_features:
-        raise ValueError("Không có feature hợp lệ để train model.")
-
+    # Xử lý đặc trưng số: Điền giá trị trung vị (median) vào chỗ trống để tránh lỗi AI
     for col in numeric_features:
         out[col] = pd.to_numeric(out[col], errors="coerce")
         out[col] = out[col].fillna(out[col].median()).fillna(0.0)
 
+    # Xử lý đặc trưng chữ: Điền "unknown" vào chỗ trống và ép kiểu string
     for col in categorical_features:
         out[col] = out[col].fillna("unknown").astype(str)
 
@@ -217,24 +224,29 @@ def train():
     X_test = test_df[features]
     y_test = test_df[TARGET]
 
+    # 1. Công đoạn tiền xử lý (Preprocess): Biến đổi dữ liệu thô sang dạng máy hiểu được
     preprocessor = ColumnTransformer(
         transformers=[
+            # Cột số: Giữ nguyên (passthrough)
             ("num", "passthrough", numeric_features),
+            # Cột chữ: Dùng OneHotEncoder để biến thành các vector 0, 1
             ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features),
         ],
-        remainder="drop",
+        remainder="drop", # Bỏ qua các cột không khai báo
     )
 
+    # 2. Cấu hình mô hình LightGBM
     model = LGBMClassifier(
-        n_estimators=450,
-        learning_rate=0.045,
-        num_leaves=31,
-        subsample=0.85,
-        colsample_bytree=0.85,
+        n_estimators=450,    # Số lượng cây quyết định
+        learning_rate=0.045, # Tốc độ học
+        num_leaves=31,       # Số lá trên mỗi cây
+        subsample=0.85,      # Tỉ lệ lấy mẫu dữ liệu
+        colsample_bytree=0.85, # Tỉ lệ lấy mẫu đặc trưng
         random_state=RANDOM_STATE,
-        objective="binary",
+        objective="binary",  # Phân loại 0 hoặc 1
     )
 
+    # 3. Ghép nối 2 công đoạn thành 1 Pipeline hoàn chỉnh
     pipeline = Pipeline([
         ("preprocess", preprocessor),
         ("model", model),
