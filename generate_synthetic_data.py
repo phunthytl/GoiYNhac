@@ -1,5 +1,6 @@
 import argparse
 import random
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -20,9 +21,20 @@ from database import (
 
 GENDERS = ["Male", "Female", "Other"]
 UNKNOWN_LANGUAGE_PROB = 0.08
-GENRE_EXPLORATION_PROB = 0.30
-LANGUAGE_EXPLORATION_PROB = 0.35
+GENRE_EXPLORATION_PROB = 0.45
+LANGUAGE_EXPLORATION_PROB = 0.50
+AFFINITY_NOISE_STD = 0.12
+HARD_NEGATIVE_RATIO = 0.75
+HARD_NEGATIVE_POOL_MULTIPLIER = 5
+HARD_NEGATIVE_SCORE_POOL_MULTIPLIER = 30
+HARD_NEGATIVE_MIN_SCORE_POOL = 500
 DEMO_PASSWORD = "User@123456"
+
+
+def log_step(message: str) -> None:
+    """In tiến trình ra terminal ngay lập tức để biết pipeline đang chạy tới đâu."""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    print(f"[{timestamp}] {message}", flush=True)
 
 
 def age_group(age: int) -> str:
@@ -198,10 +210,10 @@ def preference_similarity_score(user: pd.Series, song: pd.Series) -> float:
 
 def listen_affinity_score(user: pd.Series, song: pd.Series, rng: np.random.Generator) -> float:
     score = (
-        0.50 * preference_similarity_score(user, song)
-        + 0.30 * genre_match_score(user, song)
-        + 0.20 * language_match_score(user, song)
-        + rng.normal(0, 0.06)
+        0.40 * preference_similarity_score(user, song)
+        + 0.25 * genre_match_score(user, song)
+        + 0.15 * language_match_score(user, song)
+        + rng.normal(0, AFFINITY_NOISE_STD)
     )
     return float(score)
 
@@ -367,6 +379,113 @@ def sample_positive_songs(
     return positives.head(target_n)
 
 
+def negative_hardness_score(user: pd.Series, song: pd.Series, rng: np.random.Generator) -> float:
+    """
+    Tính độ "khó" của một negative sample.
+
+    Negative khó là bài hát nhìn qua vẫn có vẻ hợp gu user: có thể cùng genre,
+    cùng ngôn ngữ hoặc audio features tương đối gần, nhưng vẫn được gán nhãn
+    listened=0. Cách này làm positive/negative giống nhau hơn, buộc model học
+    tinh hơn thay vì chỉ dựa vào vài rule quá rõ.
+    """
+    score = (
+        0.45 * preference_similarity_score(user, song)
+        + 0.35 * genre_match_score(user, song)
+        + 0.20 * language_match_score(user, song)
+        + rng.normal(0, AFFINITY_NOISE_STD / 2)
+    )
+    return float(score)
+
+
+def sample_negative_songs(
+    user: pd.Series,
+    songs: pd.DataFrame,
+    positive_ids: set[int],
+    target_n: int,
+    rng: np.random.Generator,
+) -> pd.DataFrame:
+    """
+    Sinh negative samples theo hướng khó học hơn.
+
+    Trước đây negative được sample ngẫu nhiên từ toàn bộ bài chưa nghe. Cách đó
+    thường tạo nhiều negative quá khác gu user, khiến model phân biệt rất dễ và
+    LightGBM hay cho xác suất sát 1.0.
+
+    Hàm này chọn phần lớn negative từ nhóm bài có điểm gần gu user nhất
+    (hard negatives), sau đó trộn thêm một phần random negatives để dữ liệu vẫn
+    đa dạng.
+    """
+    if target_n <= 0:
+        return pd.DataFrame()
+
+    candidate_pool = songs[~songs["id"].astype(int).isin(positive_ids)].copy()
+    if candidate_pool.empty:
+        return candidate_pool
+
+    target_n = min(target_n, len(candidate_pool))
+    hard_n = int(round(target_n * HARD_NEGATIVE_RATIO))
+    random_n = target_n - hard_n
+
+    selected_parts = []
+    selected_ids: set[int] = set()
+
+    if hard_n > 0:
+        fav_genres = set(safe_split_text(user.get("favorite_genres", "")))
+        language_preference = str(user.get("language_preference", "unknown"))
+
+        priority_mask = candidate_pool["genre_top"].isin(fav_genres)
+        if language_preference != "unknown":
+            priority_mask = priority_mask | (candidate_pool["language_code"].astype(str) == language_preference)
+
+        priority_pool = candidate_pool[priority_mask].copy()
+        if priority_pool.empty:
+            priority_pool = candidate_pool
+
+        score_pool_size = min(
+            len(priority_pool),
+            max(hard_n * HARD_NEGATIVE_SCORE_POOL_MULTIPLIER, HARD_NEGATIVE_MIN_SCORE_POOL),
+        )
+        scored = priority_pool.sample(
+            score_pool_size,
+            replace=False,
+            random_state=int(rng.integers(0, 1_000_000)),
+        ).copy()
+        scored["_hardness"] = scored.apply(lambda song: negative_hardness_score(user, song, rng), axis=1)
+        pool_size = min(len(scored), max(hard_n * HARD_NEGATIVE_POOL_MULTIPLIER, hard_n))
+        hard_pool = scored.nlargest(pool_size, "_hardness")
+        hard_samples = hard_pool.sample(
+            min(hard_n, len(hard_pool)),
+            replace=False,
+            random_state=int(rng.integers(0, 1_000_000)),
+        ).drop(columns=["_hardness"])
+        selected_parts.append(hard_samples)
+        selected_ids.update(hard_samples["id"].astype(int).tolist())
+
+    remaining_pool = candidate_pool[~candidate_pool["id"].astype(int).isin(selected_ids)]
+    if random_n > 0 and not remaining_pool.empty:
+        random_samples = remaining_pool.sample(
+            min(random_n, len(remaining_pool)),
+            replace=False,
+            random_state=int(rng.integers(0, 1_000_000)),
+        )
+        selected_parts.append(random_samples)
+        selected_ids.update(random_samples["id"].astype(int).tolist())
+
+    if len(selected_ids) < target_n:
+        fill_pool = candidate_pool[~candidate_pool["id"].astype(int).isin(selected_ids)]
+        if not fill_pool.empty:
+            fill = fill_pool.sample(
+                min(target_n - len(selected_ids), len(fill_pool)),
+                replace=False,
+                random_state=int(rng.integers(0, 1_000_000)),
+            )
+            selected_parts.append(fill)
+
+    if not selected_parts:
+        return pd.DataFrame()
+    return pd.concat(selected_parts, ignore_index=True).drop_duplicates(subset=["id"]).head(target_n)
+
+
 def generate(
     n_users: int,
     interactions_per_user: int | None = None,
@@ -374,21 +493,40 @@ def generate(
     negative_ratio: float = 1.0,
     random_interactions: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    log_step("Bắt đầu sinh dữ liệu mô phỏng.")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    songs = load_songs_df()
-    validate_songs_columns(songs)
-    rng = np.random.default_rng(RANDOM_STATE)
-    users = make_users(songs, n_users, rng)
-    import_synthetic_users_with_accounts(users, password=DEMO_PASSWORD)
 
+    log_step("Đang đọc bảng songs từ SQLite.")
+    songs = load_songs_df()
+    log_step(f"Đã đọc {len(songs)} bài hát.")
+
+    log_step("Đang kiểm tra các cột bắt buộc của bảng songs.")
+    validate_songs_columns(songs)
+
+    rng = np.random.default_rng(RANDOM_STATE)
+
+    log_step(f"Đang sinh {n_users} hồ sơ người dùng mô phỏng.")
+    users = make_users(songs, n_users, rng)
+    log_step("Đã sinh hồ sơ người dùng.")
+
+    log_step("Đang lưu accounts demo và user_profiles vào database.")
+    import_synthetic_users_with_accounts(users, password=DEMO_PASSWORD)
+    log_step("Đã lưu accounts demo và user_profiles.")
+
+    log_step("Đang nhóm bài hát theo genre để tăng tốc sampling.")
     by_genre = {genre: group for genre, group in songs.groupby("genre_top")}
+
     target_counts = None
     if total_interactions is not None:
+        log_step(f"Đang phân bổ chính xác {total_interactions} interactions cho {n_users} users.")
         target_counts = make_target_counts(n_users, total_interactions, rng, len(songs))
+        log_step("Đã phân bổ số interactions cho từng user.")
 
     interactions_rows = []
     training_pair_rows = []
 
+    log_step("Đang sinh interactions và training_pairs cho từng user.")
+    progress_every = max(1, n_users // 20)
     for user_index, user in enumerate(users.itertuples(index=False)):
         user_s = pd.Series(user._asdict())
         if target_counts is not None:
@@ -405,16 +543,30 @@ def generate(
             training_pair_rows.append(build_training_pair(user_s, song, listened=1))
 
         negative_n = int(round(target_n * negative_ratio))
-        negative_pool = songs[~songs["id"].astype(int).isin(positive_ids)]
-        if negative_n > 0 and not negative_pool.empty:
-            negative_n = min(negative_n, len(negative_pool))
-            negative_songs = negative_pool.sample(negative_n, replace=False, random_state=int(rng.integers(0, 1_000_000)))
+        negative_songs = sample_negative_songs(user_s, songs, positive_ids, negative_n, rng)
+        if not negative_songs.empty:
             for _, song in negative_songs.iterrows():
                 training_pair_rows.append(build_training_pair(user_s, song, listened=0))
 
+        processed = user_index + 1
+        if processed == 1 or processed == n_users or processed % progress_every == 0:
+            log_step(
+                "Tiến trình: "
+                f"{processed}/{n_users} users | "
+                f"interactions={len(interactions_rows)} | "
+                f"training_pairs={len(training_pair_rows)}"
+            )
+
+    log_step("Đang chuyển dữ liệu đã sinh thành DataFrame.")
     interactions = pd.DataFrame(interactions_rows)
     training_pairs = pd.DataFrame(training_pair_rows)
+
+    log_step(
+        "Đang lưu interactions và training_pairs vào database "
+        f"({len(interactions)} interactions, {len(training_pairs)} training pairs)."
+    )
     import_training_data(interactions, training_pairs)
+    log_step("Hoàn tất sinh dữ liệu mô phỏng.")
     return users, interactions, training_pairs
 
 

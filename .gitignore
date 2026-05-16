@@ -1,5 +1,4 @@
 fma_metadata/
-model/*.joblib
 __pycache__/
 *.pyc
 data/musics.db
